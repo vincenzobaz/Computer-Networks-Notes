@@ -596,4 +596,21 @@ The user starts downloading the chunks that have the fewest repeated copies amon
 Every 10 seconds the user measures the rate at which she receives bits and determines the four peers that are sending to her at the highest rate. It then reciprocates by sending chunks to these same four peers. The four peers are called **unchocked**. Every 30 seconds it also choses one additional neighbor at sends it chunks. These peers are called **optmistically unchocked**.
 
 ### 2.6.2 Distributed Hash Tables (DHTs)
+How to implement a simple database in a P2P network?
+In the P2P system each peer will only hold a small subset of the totality of the (key, value) pairs. Any peer can query the distributed database with a particular key, the database will locate the peers that have the corresponding pair and return the pair to querying peer. Any peer can also insert a new pair in the databse. Such a distributed database is referred to as a **distributed hash table (DHT)**.
+In a P2P file sharing application a DHT can be used to store the chunks associated to the IP of the peer in possess of them.
+
+An approach: let's assign an identifier to each peer, where the identifier is an integer in the range $[0, 2^n -1]$ for some fixed $n$. Such identifier can be expressed by an $n$-bit representation. A hash function is used to transform non-integer values into integer values. We suppose that this function is available to all peers.
+How to assign keys to peers? We assign each (key,value) pair to the peer *whose identifier is the closest to key*, which is the identifier defined as *the closest successor of the key*.
+To avoid having each peer keeping track of all other peers (scalability issue) we use
+
+#### Circular DHT
+If we organize peers into a circle, each peer only keeps track of its immediate successor and predecessor (modulo $2^n$). This circular arrangement of peers is a special case of an **overlay network**: the peers form an abstract logical network which resides above the "underlay" computer network, the overlay links are not physical but virtual liaisons between pairs of peers. A single overlay link typically uses many physical links and physical routers in the underlying network.
+
+In the circle a peer asks "who is responsible for key *k*?" and it sends the message clockwise around the circle. Whenever a peer receives such message, it knows the identifier of its predecessor and predecessor, it can determine whether it is responsible (closest to) for the key in question. If not, it passes the message to its successor. When the message reaches the peer responsible for the key, this can send a message back to the querying peer indicating that it is responsible for that key.
+Using this system *N/2* messages are sent on average (N = number of peers). Designing a DHT there is a tradeoff between the number of neighbors for each peer and the number of DHT messages needed to resolve a single query. (1 message if each peer keeps track of all other peers, *N/2* messages if each knows only 2 neighbors).
+To improve our circular DHT we could add shortcuts so that each peer not only keeps track of its immediate successor and predecessor but also of relatively small number of shortcut peers scattered about the circle.
+How many shortcut neighbors? Studies show that DHT can be designed so that bot the number of neighbors per peer as well as the number of messages per query is O(log *N*) (*N* the number of peers).
+
+#### Peer Churn
 
