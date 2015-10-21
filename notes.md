@@ -111,7 +111,7 @@ Much of the evolution of the structure of the Internet is driven by economics an
 
 Today's Internet is complex, consisting of a dozen or so tier-1 ISPs and hundreds of thousands of lower-tier ISPs. The ISPs are diverse in their coverage, with some spanning multiple continents and oceans, and others limited to narrow geographic regions. The lower-tier ISPs connect to the higher-tier ISPs and the higher-tier ISPs interconnect with one another. Users and content providers are customers of lower-tier ISPs and lower-tier ISPs are customers of higher-tier ISPs. Recently, major content providers (Google) have also created their own networks and connect directly into lower-tier ISPs where possible.
 
-[!alt text](network_of_networks.png)
+![Alt text](network_of_networks.png)
 
 ## 1.4 Delay, Loss and Throughput in Packet-Switched Networks
 
@@ -122,7 +122,7 @@ As a packet travels from one node (host or router) to the subsequent host along 
 
 #### Types of Delay
 
-[!alt text](type_of_delays.png)
+![Alt text](type_of_delays.png)
 
 ##### Processing Delay
 The **processing delay** consists of the time required to examine the packet's header and determine where to direct the packet. It may also include other factors, such as the time needed to check for bit-level errors occurred during transmission.
@@ -334,7 +334,7 @@ UDP is a no-frills, lightweight transport protocol, providing minimal services. 
 #### Services Not Provided by Internet Transport Protocols
 These two protocols do not provide timing or throughput guarantees, services not provided by today's Internet transport protocols. We therefore design applications to cope, to the greatest extent possible, with this lack of guarantees.
 
-[!alt text](app_tras.png)
+![Alt text](app_tras.png)
 
 ### 2.1.5 Application-Layer Protocols
 An **application-layer protocol** defines how an application's processes, running on different end systems, pass messages to each other. It defines:
@@ -363,6 +363,19 @@ The server sends requested files to clients without storing any state informatio
 In many Internet applications, the client and server communicate for an extended period of time, depending on the application and on how the application is being used, the series of requests may be back-to-back, periodically at regular intervals or intermittently. When this is happening over TCP, the developer must take an important decision: should each request/response pair be sent over a *separate* TCP connection or should all of the requests and their corresponding responses be sent over the *same* TCP connection?
 In the former approach, the application is said to use **non-persistent connections** and in the latter it is said to use **persistent connections**
 By default HTTP uses non-persistent connections but can be configured to be use persistent connections.
+To estimate the amount of time that elapses when a client requests the base HTML file until the entire file is received by the client we define the **round-trip time** (**RTT**) which is the time it takes for a small packet to travel from client to server and then back to the client.
+
+#### HTTP with Non-Persistent Connections
+For the page and each object it contains, a TCP connection must be opened (handshake request, handshake answer), we therefore observe an addition RTT, and for each object we will have a request followed by the reply
+This model can be expensive on the server side: a new connection needs to be established for each requested object, for each connection a TCP buffer must be allocated along some memory to store TCP variables.
+
+#### HTTP with Persistent Connections
+The server leaves the TCP connection open after sending a response, subsequent requests and responses between the same client and server will be sent over the same connection. In particular an entire web page (text + objects) ca be sent over a single persistent TCP connection, multiple web pages residing on the same server can be sent from the server to the same client over a single persistent TCP connection.
+**These requests can be make back-to-back** without waiting for replies to pending requests (**pipelining**).
+When the server receives back-to-back requests, it sends the objects back-to-back.
+If connection isn't used for a pre-decided amount of time, it will be closed.
+
+
 
 ### 2.2.3 HTTP Message Format
 Two types of HTTP messages:
@@ -385,7 +398,7 @@ Accept-language: fr
 
 The majority of HTTP requests use the GET method, used to request an object.
 
-[!alt text](./http_request.png)
+![Alt text](./http_request.png)
 
  The entity body (empty with `GET`) is used by the `POST` method, for example for filling out forms. The user is still requesting a Web page but the specific contents of the page depend on what the user entered into the form fields. When `POST` is used, the entity body contains what the user entered into the form fields.
 Requests can also be made with `GET` including the inputted data in the requested URL.
@@ -503,6 +516,7 @@ DNS provides other services in addition to translating hostnames to IP addresses
 From the perspective of the invoking application in the user's host, DNS is a black box providing a simple, straightforward translation service.
 Having one single global DNS server would be simple, but it's not realistic because it would a **single point of failure**, it would have an impossible **traffic volume**, it would be **geographically too distant** from some querying clients, its **maintenance** would be impossible.
 
+
 #### A Distributed, Hierarchical Database
 The DNS uses a large number of servers, organized in a hierarchical fashion and distributed around the world.
 
@@ -519,6 +533,9 @@ Finally there are **local DNS servers** which is central to the DNS architecture
 ![Alt text][./distributedDNS.png]
 
 We can have both **recursive** and **iterative queries**.
+In **recursive queries** the user sends the request its nearest DNS which will ask to a higher-tier server, which will ask to lower order... the chain goes on until it reaches a DNS that can reply, the reply will follow the inverse path that the request had.
+In **iterative queries** the same machine sends requests and receives replies.
+Any DNS can be iterative or recursive or both.
 
 #### DNS Caching
 DNS extensively exploits DNS caching in order to improve the delay performance and to reduce the number of DNS messages ricocheting around the Internet.
@@ -613,4 +630,90 @@ To improve our circular DHT we could add shortcuts so that each peer not only ke
 How many shortcut neighbors? Studies show that DHT can be designed so that bot the number of neighbors per peer as well as the number of messages per query is O(log *N*) (*N* the number of peers).
 
 #### Peer Churn
+In a P2P system, a peer can come or go without warning. To keep the DHT overlay in place in presence of a such peer churn we require each peer to keep track (know to IP address) of its predecessor and successor, and to periodically verify that its two successors are alive.
+If a peer abruptly leaves, its successor and predecessor need to update their information. The predecessor replaces its first successor with its second successor and ask this for the identifier and IP address of its immediate successor.
 
+What if a peer joins? If it only knows one peer, it will ask him what will be his predecessor and successor. The message will reach the predecessor which will send the new arrived its predecessor and successor information. The new arrived can join the DHT making its predecessor successor its own successor and by notifying its predecessor to change its successor information.
+
+## 2.7 Socket Programming: Creating Network Applications
+Only code explication ----> skipping
+
+# Chapter 3: Transport Layer
+
+## 3.1 Introduction and Transport-Layer Services
+
+A transport-layer protocol provides for **logical communication** (as if the hosts running the processes were directly connected) between application processes running on different hosts. Application processes use the logical communication provided by the transport layer to send messages to each other, free from the worry of the details of the physical infrastructure used.
+**Transport-layer protocols are implemented in the end systems but not in network routers**.
+On the sending side, the transport layer converts the application messages into transport-layer packets, known as transport-layer **segments**. This is done by breaking them into smaller chunks and adding a transport-layer header to each chunk. The transport-layer then passes the segment to the network-layer packet at the sending end-system.
+On the receiving side, the network layer extracts the transport-layer segment from the datagram and passes the segment up to the transport-layer which then processes the received segment, making the data in the segment available to the received application.
+
+### 3.1.1 Relationship Between Transport and Network Layers
+Whereas a transport-layer protocol provides logical communication between *processes* running on different hosts, a network-layer protocol provides logical communication between *hosts*.
+
+### 3.1.2 Overview of the Transport Layer in the Internet
+A TCP/IP network (such as the Internet) makes two distinct transport-layer protocols available to the application layer:
+
+ - **UDP** User Datagram Protocol, which provides an unreliable, connectionless service to the invoking application
+ - **TCP** Transmission Control Protocol which provides a reliable, connectionless-oriented service to the invoking application.
+
+We need to spend a few words on the network-layer protocol: the Internet network-layer protocol is the IP (Internet Protocol). It provides a logical communication between hosts. The IP service model is a **best-effort delivery service**: it makes the best effort to deliver segments between hosts, *but it makes guarantees*:
+
+ - it doesn't guarantee segment **delivery**
+ - it doesn't guarantee **orderly** delivery of segments
+ - it doesn't guarantee the **integrity** of the data in the segments
+
+Thus IP is said to be an **unreliable service**.
+Every host has **at least one network-layer address** a so-called IP address.
+
+UDP and TCP extend IP's delivery service between to end systems to a delivery service between two processes running on the end systems.
+Extend host-to-host delivery to process-to-process delivery is called **transport-layer multiplexing and demultiplexing**.
+UDP provides process-to-process delivery and error checking are the only services provided by UDP (therefore it is an unreliable service).
+TCP provides **reliable data transfer** using flow control, sequence numbers, acknowledgements and timers. **TCP thus converts IP's unreliable service between end systems into a reliable data transport service between processes**
+TCP also provides **congestion control** a service not really provided to the invoking application as it is to the Internet as a whole: it prevents any TCP connection from swamping the links and routers between communication hosts with an excessive amount of traffic giving each connection traversing a congested link an equal share of the bandwidth.
+
+## 3.2 Multiplexing and Demultiplexing
+Here we'll cover m&d in the context of the Internet but **a multiplexing/demultiplexing service is needed for all computer networks**.
+
+ - The job of delivering the data in a transport-layer segment to the correct socket is called **demultiplexing**.
+ - The job of gathering data chunks at the source host from different sockets, encapsulating each data chunk with header information (which will be used in demultiplexing) to create segments and passing the segments to the networks layer is called **multiplexing**.
+
+ Therefore sockets need to have unique identifiers and each segment needs to have special fields that indicate the socket to which the segment is delivered. These fields are the **source port number field** and the **destination port number field**. Each port number is a **16-bit number** ranging from 0 to 65535.
+ Port numbers ranging from 0 to 1023 are called **well-known port numbers** and are restricted, reserved for us by well-known application protocols such as HTTP (80) and FTP (21). Designing an application, we should assign it a port number.
+
+#### Connectionless Multiplexing and Demultiplexing
+A UDP socket is fully identified by the **two-tuple**:
+`(destination IP address , destination port number)`
+therefore if two UDP segments have different source IP address and/or source port numbers but have the same destination IP address and destination port number, than the two segments will be directed to the same destination process via the same destination socket.
+The source port number serves as part of the "return address"
+
+#### Connection-oriented Multiplexing and Demultiplexing
+A TCP socket is identified by the **four-tuple**:
+`(source IP address, source port number, destination IP address, destination port number)`
+When a TCP segment arrives from the network to a host, the **host uses all four values to demultiplex the segment to the appropriate socket**.
+Two arriving TCP segments with different source IP addresses or source port numbers will (with the exception of a TCP carrying the original connection establishment request) be directed to two different sockets.
+
+Routine:
+
+ - The TCP server application always has a **welcoming socket** that waits for connection establishment requests from TCP clients on port number X
+ - The TCP client creates a socket and sends a connection **establishment request** (a TCP segment including destination port, source port number and *a special connection-establishment bit set in the TCP header*)
+ - The server OS receives the incoming connection-request segment on port X, it locates the server process that is waiting to accept a connection on port number X, then creates **a new socket** which will be identified by
+ `(source port number in the segment (cleint), IP address of source host (client), the destination port number in the segment (its own), its own IP address)`
+ - With the TCP connection in place, client and server can now send data to each other
+
+The server may support many simultaneous TCP connection sockets, with each socket attached to a process and each socket identified by its own four-tuple.
+When a TCP segment arrives at the host, all the fours fields are used to demultiplex the segment to the appropriate socket.
+
+##### Port Scanning
+Can be used both by attackers and system administrator to find vulnerabilities in the target or to know network applications are running in the network.
+The most used port scanner is **nmap** free and open source.
+For TCP it scans port looking for port accepting connections, for UDP looking for UDP ports that respond to transmitted UDP segments.
+It then returns a list of open, closed or unreachable ports.
+A host running nmap can attempt to scan any target *anywhere* in the Internet
+
+#### Web Servers and TCP
+In a web server, all segments have destination port 80 and both the initial connection-establishment segments and the segments carrying HTTP request messages will have destination port 80, the server will distinguish clients using the source IP addresses and port numbers.
+Moreover in today's high-performing Web, servers often use only one process and *create a new thread with a new connection soket for each new client connection*.
+
+If using persistent HTTP, client and server will exchange messages via the same server socket. If using non-persistent HTTP, a new TCP connection is created and closed for every request/response and hence a new socket is created and closed for every request/response.
+
+## 3.3 Connectionless Transport: UDP
