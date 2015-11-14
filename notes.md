@@ -740,3 +740,44 @@ At the send side, UDP performs the 1s complement of the sum of all the 16-bit (m
 UDP implements error detection according to the **end-end principle**: certain functionality (error detection in this case) must be implemented on an end-end basis: "functions placed at the lower levels may be redundant or of little value when compared to the cost of providing them at the higher level".
 
 ## 3.4 Principles of Reliable Data Transfer
+It is the responsibility of a **realiable data transfer protocol** to implement reliable data service: no transferred data bits are corrupted or lost and all are delivered in the order in which they were sent.
+We will consider the following actions:
+
+ - The sending side of the data transfer protocol will be invoked from above by a call to `rdt_send()`
+ - On the receiving side `rdt_rcv()` will be called when a packet arrives while `deliver_data()` will be called when the `rdt` protocol wants to deliver data to the upper layer.
+
+We use the term packet rather than segment because the concepts explained here applies to computer networks in general.
+We will only consider the case of **unidirectional data transfer** that is data transfer from the sending to the receiving side. The case of reliable **bidirectional** (full-duplex) **data transfer** is not more difficult but more tedious to explain. Nonetheless sending and receiving side will need to transmit packets in *both directions*.
+
+### 3.4.1 Building a Reliable Data Transfer Protocol
+**Finite-state machine**s (FSM) are boring! And unlikely to be asked at the exam, therefore I decided not to cover them here.
+
+### 3.4.2 Pipelined Reliable Data Transfer Protocols
+In today's high-speed networks stop-and-wait protocols are simply not tolerable: we  cannot send one packet and wait for the ACK and then send the second one, it is inefficient as we can see computing the **utilization of the channel**:
+
+$$ U = \frac{L/R}{RTT+ L/R} $$
+
+The solution is simple: rather than operate in a stop-and-wait manner, the sender is allowed to send multiple packets without waiting for acknowledgements. Since the many in-transit send-to-receiver packets can be visualized as filling a pipeline, this technique is known as **pipelining**.
+
+Some consequences:
+
+ - The range of sequence numbers must be increased: **each in-transit packet must have a unique sequence number**
+ - Sender and receiver may have to buffer more than one packet.
+
+Two basic approaches toward pipelined error recovery can be identified: **Go-Back-N** and **Selective Repeat**
+
+### 3.4.3 Go-Back-N (GBN)
+The sender is allowed to send N packets (**sender window size = N**), the receiver has a window of size **1**.
+If a segment from sender to receiver is lost, the receiver discards all the segments with sequence number greater than the sequence number of the dropped packet, answering with ACK with this sequence number. (no packet re-ordering)
+The sender will wait for ACK in order to move the window and send new packets. The wait is not infinite, after a certain time a timeout will occur and the sender will retransmit all the packets in the sending window.
+In a Go-Back-N protocol, acknowledgements are **cumulative**: if sender receives ACK3 he will know that all the packets from 0 to 3 have been received, even if hasn't received ACK2.
+
+### 3.4.4 Selective Repeat
+When the window-size and bandwidth-delay product are both large, many packets can be in the pipeline and a single packet error can thus cause GBN to retransmit a large number of packets, many unnecessarily.
+**Selective Repeat** avoid unnecessary retransmissions by having the sender retransmit only those that packets it suspects were received in error at the receiver:
+**individual acknowledgements** (opposed to cumulative).
+**sender window size = N** and **receiver window site = N**.
+The sender has a timer for each packet in its window. When a timeout occurs, only the missing packet is resent.
+The receiver buffers out of order packets.
+
+
