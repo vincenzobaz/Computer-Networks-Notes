@@ -654,7 +654,7 @@ Whereas a transport-layer protocol provides logical communication between *proce
 A TCP/IP network (such as the Internet) makes two distinct transport-layer protocols available to the application layer:
 
  - **UDP** User Datagram Protocol, which provides an unreliable, connectionless service to the invoking application
- - **TCP** Transmission Control Protocol which provides a reliable, connectionless-oriented service to the invoking application.
+ - **TCP** Transmission Control Protocol which provides a reliable, connection-oriented service to the invoking application.
 
 We need to spend a few words on the network-layer protocol: the Internet network-layer protocol is the IP (Internet Protocol). It provides a logical communication between hosts. The IP service model is a **best-effort delivery service**: it makes the best effort to deliver segments between hosts, *but it makes guarantees*:
 
@@ -928,4 +928,65 @@ The client decides to end the connection:
  A host receives a TCP segment whose port number or source IP address do not match with any of the ongoing sockets in the host -> the host sends a special reset segment to the source (RST flag bit set to 1) and drops the packet (UDP does responds with a special ICMP datagram)
 
 ## 3.6 Principles of Congestion Control
+
+### 3.6.1 The Causes and the Costs of Congestion
+
+#### Scenario 1: Two Senders, A Router with Infinite Buffers
+A -> D, B -> C, A and B connect to the Internet through the same router, B and C connect to the Internet through the same router
+(pas envie)
+
+
+## 3.7 TCP Congestion Control
+TCP limits the rate at which it sends traffic into its connection as a function of perceived network congestion.
+The TCP congestion-control mechanism operating at the sender keeps track of an additional variable: the **congestion window**, noted `cwnd` which imposes a constraint on the rate at which a TCP sender can send traffic into the network. Specifically: `LastByteSent - LastByteAcked <= min{cwnd, rwnd}`.
+Limiting the amount of unacknowledged data at the sender we can limit the sender's send rate.
+At the beginning of each RTT the sender sends `cwnd` bytes of data and at the end of the RTT he acknowledges. Thus **the sender's send rate is roughly `cwnd/RTT` bytes/sec. Adjusting the value of `cwnd` the sender can adjust the rate at which it sends data into the connection**.
+Let now consider a *loss event* (timeout OR three duplicate ACKs). When there is excessive congestion some router buffers along the path overflows, causing a loss event at the sender *which is taken by the sender to be an indication of congestion on the sender-to-receiver path*.
+If there is no congestion then all the acknowledgements will be received at the sender, which will take these arrivals as an indication that segments have been received and that he can increase the congestion window size and hence its transmission rate. If acknowledgements arrive at a slow rate then the congestion window will be increased at a relatively slow rate and, viceversa, it will be increased more quickly if ACKs arrive at a high rate.
+Because TCP uses acknowledgements to trigger (or clock) its increase in congestion window size, TCP is said to be **self-clocking**. TCP uses the principles:
+
+ 1. *A lost segment implies congestion therefore the sender rate should be decreased.*
+ 2. *An acknowledged segment means the network's working, therefore the sender's rate can be increased* (if ACK of unacknowledged segment)
+ 3. *Bandwidth probing*: the transmission rates increases with ACKs and decreases with loss events: TCP is continuously checking (probing) the congestion state of the network
+
+### TCP Congestion-Control Algorithm
+Three components :
+
+#### 1 - Slow Start
+When a TCP connection begins, `cwnd` is usually initialized to a small value of 1 MSS and only one segment is sent. **Each acknowledged packet** will cause the `cwnd` to be increased by 1 MSS and the sender will send now two segments (because the window is increased by one for each ack).
+Therefore the number of segments doubles at each RTT, therefore the sending rate also doubles every RTT. Thus TCP send rate **starts slow but grows exponentially during the slow start phase**.
+When does the growth end?
+
+ - Timeout: `cwnd` is set to 1 MSS and the slow start is started anew. Also the variable slow start threshold is initialized:
+ `ssthresh = cwnd / 2 - (half of value of cwnd when congestion is detected)`
+ - When `cwnd >= ssthresh` slow starts is stopped -> congestion avoidance state
+ - Three duplicate ACKs: fast retransmit and fast recovery state
+
+#### 2 - Congestion Avoidance
+TCP suppose congestion is present, how to adapt?
+Instead of doubling `cwnd` every RTT, `cwnd` is increased **by just a single MSS every RTT**.
+When should this linear increase stop?
+
+ - Timeout: `cwnd` is set to 1 MSS, and `ssthresh = cwnd (when loss happened) / 2`
+ - Three duplicate ACKs: `cwnd = (cwnd / 2) + 3 MSS` and `ssthresh = cwnd (when 3 ACKs received) / 2` -> fast recovery state
+
+#### 3 - Fast Recovery
+`cwnd` is increased by 1 MSS for every duplicate ACK received for the missing state that caused TCP to enter this state. When the ACK arrives for the missing segment, TCP goes into Congestion Avoidance after reducing `cwnd`.
+If a timeout occurs `cwnd` is set to 1 MSS and `ssthresh` is set to half the value of `cwnd` when the loss event occurred.
+Fast recovery is recommended but not required in TCP, in fact only the newer version of TCP, **TCP Reno** incorporated fast recovery.
+
+#### Macroscopic Description of TCP Throughput
+What is the average throughput (average rate) of a long-lived TCP connection?
+Ignoring the slow start phase (usually very short as the rate grows exponentially). When the window size is *w* the transmission rate is roughly *w*/RTT. *w* is increased by 1 MSS each RTT until a loss event.
+Denote by *W* the value of *w* when a loss event occurs. Then we have
+
+average throughput of a connection = (0.75 * W)/RTT
+
+#### TCP Over High-Bandwidth Paths
+Today's high speed links allow to have huge windows. What happens if one of the segments in the window gets lost? What fraction of the transmitted segments could be lost that would allow the TCP congestion control to achieve the desired rate?
+
+average throughput of a connection = (1.22 * MSS)/(RTT * sqrt(L))
+
+Where L is the loss rate
+
 
