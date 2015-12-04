@@ -1434,4 +1434,84 @@ Nonces are used to avoid *connection replay attacks* (resending packets sniffed 
 TCP FIN segments can be crafted by an attacker (*truncation attack*), therefore they cannot be used.
 The type field of SSL records is used for these purpose, even if it sent in the clear, it is authenticated at the receivers using record's MAC.
 
+## 8.7 Network-Layer Security: IPsec and Virtual Private Networks
+The IP security protocol is called **IPsec**, it secures IP datagrams between any two network-layer entities (host, routers)
 
+### 8.7.1 IPsec and Virtual Private Networks (VPNs)
+An institution extending overt multiple geographical regions might want its own IP network so that the machines in it can communicate securely. Such a disjoint network is a **private network**. A physical private network can be expensive. VPN can be used to deploy and maintain a private network over the existing public Internet. The traffic is sent over the Internet but encrypted before entering the public net.
+Not all traffic sent into the Internet by the gateway routers or laptops will be IPsec secured (only the portion accessing internal resources)
+
+### 8.7.2 The AH and ESP Protocols
+In the IPsec protocol suite, there are two principal protocols: the **Authentication Header (AH)** protocol and the **Encapsulation Security Payload (ESP)** protocol.
+When a source IPsec entity (router or host) sends secure datagrams to a destination entity it does so with either ESP or AH. AH provides *source authentication* and *data integrity* while ESP provides *source authentication, data integrity and confidentiality*. Because the latter is often critical for VPNs, ESP is much more widely used AH. We will only study ESP.
+
+### 8.7.3 Security Associations
+Before sending IPsec datagrams from source entity to destination entity, source and destination create a network-layer logical connection called **security association (SA)**. SA is a simplex (unidirectional from source to destination) logical connection. If both entities want to send datagrams to each other, then two SAs need to be established, one in each direction.
+The VPN server (headquarters gateway router) will maintain state information about the SA, which will include:
+
+ - 32-bit identifier for the SA, called *Security Parameter Index (SPI)*
+ - The origin interface (client outside) of the SA and its destination (its out facing interface) [IP addresses]
+ - Type of the encryption used
+ - Encryption key
+ - Type of the integrity check
+ - Authentication key
+
+An IPsec entity often maintains state information for many SAs (all outside clients) using its *Security Association Database* (SAD) which is a data structure in the entity's OS kernel.
+
+### 8.7.4 The IPsec Datagram
+IPsec has two different packet forms, one for **tunnel mode** and one for **transport mode**, the first one, being more appropriate for VPNs, is more widely deployed than the transport mode, we will therefore only focus on it.
+
+![Alt text](ipsecdatagram.png)
+
+The headquarters's gateway receives an IPv4 datagram from inside the network directed to a VPN client outside. Here is what happens:
+
+ 1. It appends to the back of the original datagram (which includes the original header fields) in the *ESP trailer* field
+ 2. It encrypts the result using the algorithm and key specified in the SA
+ 3. Appends to the front of the result a *ESP Header* creating the "enchilada"
+ 4. Creates an authentication MAC over the whole enchilada using algorithm and key specified in the SA
+ 5. Appends the MAC to the back of the enchilada forming the *payload*
+ 6. Creates a brand new IP header with all the classic IPv4 header fields which it appends before the payload.
+
+The protocol number field is set to 50, designating IPsec. The routers along the path will treat the datagram as a normal one, oblivious that it is an IPsec datagram.
+To decide whether outgoing packets should be treated as above or simply let through, the gateway maintains a *Security Policy Database* (SPD) which indicates what types of datagrams (as a function of the source and destination IPs and of the protocol) are to be IPsec processed and, for those that are, which SA should be used.
+**IPsec provides confidentiality, source authentication, data integrity, replay-attack prevention.**
+
+### 8.7.5 IKE: Key Management in IPsec
+Who/What should populate the SAD? For small VPNs this can be done manually. For larger ones there is the ***Internet Key Exchange (IKE) protocol***.
+IKE is similar to the handshake in SSL. Here are the steps:
+
+ - During the first exchange of messages, the two sides use Diffie-Hellman to create a Bi-Directional IKE SA between the routers, which is entirely different form the IPsec SA discussed above. This IKESA provides an authenticated and encrypted channel between the two routers. Keys are established for encryption and authentication for IKESA. Also established is a master secret.
+ - During the second exchange of messages, both sides reveal their identity to each other by signing their messages. However the identities are not revealed to an eventual sniffer, since the messages are sent over the IKE sa channel. The two sides also negotiate the IPsec encryption and authentication algorithms to be employed by the IPsec SA. Finally the two sides create an SA n each direction.
+
+We have two phases to reduce computational costs: we don't need asymmetric cryptography during second phase, allowing IKE to generate many SAs with relatively little computational cost.
+
+## 8.9 Operational Security: Firewalls and Intrusion Detection Systems
+
+### 8.9.1 Firewalls
+A firewall is a combination of hardware and software that isolates an organization's internal network from the Internet at large, allowing some packets to pass and blocking others. It has three goals
+
+ 1. *All traffic from outside to inside, and vice versa, passes through the firewall*
+ 2. *Only authorized traffic, as defined by the local security by the local policy, will be allowed to pass*.
+ 3. *The firewall itself is immune to penetration*
+
+Firewalls can be classified in three categories:
+
+#### 1: Traditional Packet Filters
+Packet filters examine each datagram in isolation determining whether the datagram should be allowed to pass or should be dropped based on administrator-specific rules.
+Filtering decisions can be based on IP source/destination, protocol type, TCP/UDP, TCP flags/ ICMP message type, rules for leaving/entering, rules for different router interfaces.
+The parameters are based on the policy of the organization taking account of user productivity and bandwidth usage as well as security concerns.
+
+#### 2: Stateful Packet Filters
+Decisions are made on each packet in isolation. Stateful filters track TCP connecions and use this knowledge to make filtering decisions.
+
+#### 3: Application Gateways
+Application Gateways look beyond the IP/TCP/UDP headers and make policy decisions based on application data. An **Application Gateway** is an application-specific server through which all application data must pass. Multiple AG can run on the same host, but each gateway is a separate server with its own processes.
+
+### 8.9.2 Intrusion Detection Systems
+An **intrusion detection system (IDS)** is a device that alerts when it observes potentially malicious traffic. An **intrusion prevention system (IPS)**  is a device that filters out suspicious traffic. Both types of device perform **deep packet inspection**: they look beyond the header fields and into the actual application data that the packets carry.
+
+An IDS can detect a wide range of attacks, including network mapping, port scans, TCP stack scans, DoS, worms, viruses, OS vulnerability attacks and application vulnerability attacks.
+An organization can deploy one more IDS sensors in its network. When many are used, they work together, usually coordinated by a central server. More than one is often a good solution as each one compare each passing packet with tens of thousands of signatures. They are usually classified as either **signature-based systems** or **anomaly-based systems**.
+A signature based IDS maintains an extensive database of attack signature, each of which being a set of rules pertaining to an intrusion activity. A signature can be a list of packet characteristics or may relate to a series of packets. They are created by network security engineers researching attacks. The ids sniffs every packet passing by it, comparing it with signatures.
+Signature based IDS, although widely deployed, have a number of limitations: they require a previous knowledge of the attack to generate an accurate signature, false alarms may be generated, they can be slow and fail to detect attacks if overwhelmed.
+Anomaly-based packets study normal traffic and looks for statistically unusual events. They don't rely on previous knowledge of attacks.
