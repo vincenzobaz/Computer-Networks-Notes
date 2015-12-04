@@ -1234,3 +1234,204 @@ It's not humanable possible to decide a date on which all machines would change 
 The most straightfoward way is a **dual stack** approach where IPv6 nodes also have a complete IPv4 implementation. To determine whether anotehr node is IPv6 or IPv4-only DNS can be used, just checking whether the node has a IPv6 address or an IPv4 one. However this will bring about the loss of data in specific IPv6 header fields.
 Another approach would be **tunneling** : when two IPv6 nodes are connected by intervening IPv4 routers, we call the IPv4 nodes **tunnel**, the entire IPv6 datagram is put in the payload field of a IPv4 datagram which will be propagated by the tunnel unaware of the details and received by the destination IPv6 node which is able to extract the IPv6 datagram and to route it.
 This migration shows the difficulty in changing network-layer protocols.
+
+# 4.5 Routing Algorithms
+A host is attached directly to one router, the **default router** for the host (also called **first hop router**). Whenever a host sends a packet, the packet is transferred to its default router, which we'll call **source router**, we'll call the default router for the destination host as the **destination router**. Routing a packet from source to destination boils down to routing the packet from source router to destination router.
+
+The purpose of a routing algorithm is simple: given a set of routers connected by links, it finds a "good" path from source to destination router. *A good path is the least expensive one*.
+
+Graphs (see Algorithms course) are used to formulate routing problems, the node representing routers and the edges the links connecting them. Each edge also has a **value representing its cost**. For any nodes x and y in the G(raph) we denote c(x,y) the cost of the edge between them. If (x,y) doesn't belong to G, we set c(x,y) = infinity. We only consider undirected graphs.
+We just have to find the least costly paths between sources and destinations.
+We can classify routing algorithms in two groups:
+
+ - **Global routing algorithms**: compute the least-cost path between a source and a destination using complete, global knowledge about the network.
+ They are often referred to as **link-state (LS) algorithms** since the algorithm must be aware of the cost of each link in the network
+ - **Decentralized routing algorthms**: compute the least-cost path in an iterative, distributed manner: no node has complete information about the cost of all network links. Instead, each node begins with only the knowledge of the costs of its own directly attached links.
+
+We could also make another classification separating **static routing algorithms** (routes change very slowly, eg after human intervention) and **dynamic routing algorithms**( routing change as the load or topology change). Finally another distinction could be made between **load-sensitive** or **load-insensitive** algorithms according to whether link costs vary reflecting the level of congestion.
+
+### 4.5.1 The Link-State (LS) Routing Algorithm
+All link costs are known. In practice this is accomplished by having each node broadcast link-state packets to all other nodes in the network, each packet containing the identities and costs of its attached links resulting in **all nodes having an identical and complete view of the network** (each node could run the algorithm).
+A link-state algorithm can be ***Dijkstra's algorithm*** or ***Prim's algorithm***.
+Code and example page 394
+
+### 4.5.2 The Distance-Vector (DV) Routing Algorithm
+The **distance-vector** algorithm is **iterative**, **asynchronous** and **distributed**.
+
+ - *Distributed* because each node receives some information from one or more of its directly attached neighbors, performs a calculation and then distributes the results back to its neighbors.
+ - *iterative*: the process continues on until no more information is exchanged between neighbors (self terminating)
+ - *asynchronous*: the nodes are not required to operate in lockstep with each other
+
+The least cost between x and y d(x,y) can be determined using the ***Bellman-Ford*** equation :
+
+d(x,y) = min_v {c(x,y) + d(v,y)}
+
+
+# Chapter 8: Security in Computer Networks
+
+## 8.1 What is Network Security?
+Desirable properties of **secure communication**:
+
+ - *Confindentiality*: only sender and receiver should be able to understand the contents of the transmitted message -> encryption
+ - *Message integrity*: make sure the content of the communication is not altered -> checksum
+ - *End-point authentication*: sender and receiver should be able to confirm the identity of the other party involved in the communication.
+ - *Operation security*: ability to counter attacks to internal networks -> firewalls, IPS, IDS
+
+Possible attacks:
+
+ - *eavesdropping*: sniffing and recording messages flowing in a channel
+ - *modification, inserion, deletion* of messages or message content
+
+These two allow to mount many other types of attacks
+
+## 8.2 Principle of Cryptography
+See Information Science, BA2
+ADDITION:
+
+#### Block Ciphers
+Today there are two broad classes of symmetric encryption techniques: **stream ciphers** and **block ciphers**(used for PGP, SSL, IPssec)
+In a block cipher, the message to be encrypted is processed into blocks of *k* bis and each block is encrypted independently. To encode a bloc, the cipher uses a *on-to-one* mapping to map the *k*-bit block of cleartext to a *k*-bit block of ciphertext. To avoid bruteforce attacks, cipher blocks usually employ large blocks (*k*=64) but longer blocks implies longer tables to store the mappings.
+Block ciphers typically use functions that simulate randomly permuted tables. EX
+64 bit input split into 8 8-bit chunks, each of which is processed by a 8-bit to 8-bit table, each chunk having its table. The encrypted chunks are reassembled into a 64 bits message which is fed again to the input. After *n* such cycles, the function provides a 64-bit block of ciphertext. The key for this block would be the eight permutation tables, assuming that the scramble function is publicly known. Popular block ciphers: DES (Data Encryption Standard), 3DES, AES (Advanced Encryption Standard). These use functions instead of predetermined tables. Each of them uses a string of bits for a key (64-bit blocks with 56-bit key in DES, 128-bits blocks and 128/192/256 bits-long keys)
+
+##### Cipher-Block Chaining
+We need to avoid long messages avoiding that two or more identical ciphertexts (produced for identical cleartexts by a symmetric encryption). 
+(I DON'T FINISH THIS PART, IT GOES TOO DEEP INTO ENCRYPTION TECHNIQUES WHICH IS NOT WHAT WE ARE INTERESTED IN)
+
+## 8.3 Message Integrity and Digital Signatures
+We want to provide **message integrity** (aka message authentication). Message integrity is verified when:
+
+ - The message received indeed originated from the sender
+ - The message was not tampered with on its way to the receiver
+
+### 8.3.1 Cryptographic Hash Functions
+A **hash function** takes an input *m* and computes a fixed length size string *H(m)* known as a hash. A **cryptographic hash function** is required to have an additional property:
+
+**it is computationally infeasible to find any two different messages *x* and *y* such that H(x) = H(y)**
+Some used cryptographic hashing functions are md5, SHA...
+
+### 8.3.2 Message Authentication Code
+To perform message integrity we also need a shared secret *s*, called the **authentication key**. The procedure is then:
+
+ 1. Alice creates message *m*, concatenates *m+s* and computes the hash *H(m+s)* to create the **message authentication code (MAC)**
+ 2. Alice **appends the MAC to the message** *m* creating *(m+H(m+s))*
+ 3. Bob receives the message and knowing the hash function and the secret, computes the hash. He creates *H(m+s)* and compares it with what he received.
+
+MAC is nice because *it doesn't require any encryption algorithm*
+The most popular standard of mac today is **HMAC** which can be used with either MD5 or SHA-1. The problem then is: how to distribute the secret?
+ Physically?
+
+### 8.3.3 Digital Signatures
+A **digital signature** is a cryptographic technique to indicate the owner or creator of a document or to signify one's agreement with a document's content.
+Just as with handwritten signatures, digital signatures should be created in a way that they are **verifiable** (prove that the the author of a signature is indeed the author) and nonforgeable** (prove that only that individual could have signed the document).
+We can use the public and private keys we already created for asymmetric confidentiality.
+To sign a message *m* Bob can encrypt the message with the **private key** (only the matching public key will be able to decrypt).
+However encryption and decryption and computationally expensive therefore:
+
+ 1. Bob computes the hash of the message
+ 2. Bob uses his private key to encrypt the hash
+ 3. Bob contants the encrypted hash and the message
+ 4. Alice can decrypt, find the hash, compute a hash herself check for identity
+
+We saw that both digital signatures and MACs involve using a hash function but digital signatures, requiring encryption, need heavier operations and also need a *Public Key infrastructure* (PKI) with certification authorities.
+
+#### Public Key Certification
+An important application of digital signatures is **public key certification**, that is, **certifying that a public key belongs to a specific entity**. It is used in IPsec and SSL.
+A **Certification Authority** binds a public key to a particular entity. It has the follow roles:
+
+ 1. A CA verifies that an entity (person, router, ...) is who it says it is. The method depends on the authority
+ 2. The CA creates a **cerificate** that binds the public key of the entity to the identity. The certificate contains the public key and globally unique identifying information about the owner of the public key. The **certificate is digitally signed by the CA**
+
+## 8.4 End-Point Authentication
+**End-point authentication** is the process of one entity proving its identity to another entity over a computer network.
+Authentication must be done solely on the basis of messages and data exchanged as part of an **authentication protocol**. Typically this would run before the two communicating parties run some other protocol.
+
+We can analyze authentication developing a simple algorithm step by step:
+
+#### Version 1.0
+Alice simply sends a message to Bob saying "I'm Alice"
+#### Version 2.0
+Alice and Bob always communicate using the same addresses. Bob can simply check that the message has the source IP of Alice. However is fairly easy to spoof an IP address: crafting a special datagram is feasible using a custom kernel e.g Linux.
+#### Version 3.0
+Alice and Bob could share a secret password, a secrete between the authenticator and the person being authenticated.
+Alice: I'm Alice, Password.
+However password can be eavesdropped, sniffed (read and stored).
+#### Version 3.1
+We could encrypt the password using a shared symmetric cryptographic key.
+However this protocol is subject to **playback attacks** an eavesdropper could sniff the encrypted secret and, without having to decrypt, could send it to impersonate Alice.
+#### Version 4.0
+To avoid playback attacks we could use the same principle behind TCP's three way handshake. A **nonce** is a number that a protocol will use only once in a lifetime.
+The procedure is then:
+
+ 1. Alice sends: `I am Alice`
+ 2. bob chooses a nonce and sends it to Alice
+ 3. Alice encrypts it using Alice and Bob's symmetric secret key and sends the encrypted nonce.
+ 4. Bob decrypts the received nonce and checks for equality with the one he generated.
+
+## 8.5 Securing e-mail
+Security functionalities are provided by many layers of the network stack. Why? There is a need for security at higher layers as well as blanket coverage at lower layers and it easier to provide security at higher layers.
+
+### 8.5.1 Secure E-Mail
+What features do we want? *Confindentiality, Sender authentication, Receiver authentication*.
+ - Confidentiality: to overcome the problem of sharing a symmetric secret, Alice and Bob use asymmetric cryptography. Bob makes his public key publicly available (key server or web page) and Alice encrypts her message with Bob's public key. Bob can decrypt using his private key. However asymmetric crypto is quite inefficient. A *session key* can be used: Alice selects a **random symmetric key**. She uses it to encrypt the message. She the encrypts this key using Bob's public key and concatenates the symmetricly encrypted message and the asymmetricly encrypted key.
+ - Sender authentication and message integrity: we suppose that Alice and Bob don't care for confidentiality. They will use **digital signatures** and **message digests**.
+ Alice applies a hash function *H* to her message *m*, obtain a message digest, signs the digest with her private key to create a digital signature, concatenates the original message with the signature to create a package and sends the package to Bob's e-mail address.
+ Bob uses Alice's public key to the digest and compares the result fo this operation with his own hash *H* of the message.
+ - Confidentiality, sender authentication and message integrity: the two procedures above can be combined, message and digest are concatenated and the treated as a new message which is encrypted using the first technique.
+
+These techniques suppose however that Alice and Bob are able to exchange their public keys. An intruder could in fact send a public key to Bob pretending to be Alice. *Certification is needed*.
+
+#### Phil Zimmermann and PGP
+PZ was the creator of PGP. For that he was legally attacked by the US Government, he distributed PGP while it should have stayed a secret weapon in the heads of the defense. The US dropped the case and PGP became the most widely used e-mail encryption software in the world despite the lack of funding, paid staff.
+
+### 8.5.2 PGP
+Pretty Good Privacy (PGP) is an e-mail encryption scheme that has become the De Facto standard.
+It uses the same design shown above, giving the option of signing, encrypting or both.
+When PGP is installed, it creates a public key pair for the user, the public key can be posted online while the private key is protected by a password which has to be entered every time the user accesses the private key.
+A PGP message appears after the **MIME** header.
+PGP also provides a mechanism for public key certification. PGP public keys are certified by ***Web of Trust***: Alice can certify any key/username pair when she believes the pair really belong together and, in addition, PGP permits Alice to say that she trusts another user to vouch for the authenticity of more keys. Some PGP users sign each other's key by holding *key-signing parties*.
+
+## 8.6 Securing TCP Connections: SSL
+We now move to the transport layer. The enhanced version of TCP is called **Secure Socket Layer (SSL)**, a slightly modified version of SSL v3 called **Transport Layer Security (TLS)** has been standardized by the IETF.
+Originally developed by Netscape, SSL has enjoyed broad deployment since its origins, providing secure communication between all recent browsers and online services. **SSL provides TCP with confidentiality, data integrity, server authentication and client authentication**.
+SSL is often used over HTTP, however, as it secures TCP, it can be employed by any application that runs over TCP. SSL provides a simple *Application Programming Interface* with sockets, similar to TCP's API.
+When an application wants to use SSL, it must include SSL classes/libraries. **Technically SSL resides in the application layer** but from the developer's perspective it is a transport layer protocol that provides TCP's services enhanced with security services.
+
+### 8.6.1 The Big Picture (primitive almost-SSL)
+Three phases:
+
+ 1. **Handshake**: Bob initiates a TCP connection is established (TCP SYN, SYNACK, ACK). Bob sends *SSL Hello*, Alice responds with her certificate containing her public key (the certificate being certified by a CA, Bob is sure that the key belongs to Alice). Bob generates a ***master secrect (MS)***, encrypts it with Alice's public key to create the ***Encrypted Master Secret (EMS)*** and sends it to Alice who will decrypt it with her private key to get the MS which can be used for confidentiality and integrity as seen before.
+ 2. **Key Derivation** instead of using the MS for integrity and confidentiality, it is safer to use different keys for different functions. Therefore *both* Alice and Bob **use the MS to generate**:
+ 	- Eb = session encryption key for data Bob -> Alice
+	- Mb = session MAC key for data Bob -> Alice
+	- Ea = session encryption key for data Alice -> Bob
+	- Ma = session MAC key for data Alice -> Bob
+The MS could simply be split in four chunks, but real SSL does it differently.
+ 3. **Data Transfer** TCP is a byte-stream protocol, so where would we put the MAC for the integrity check? SSL breaks the data stream into **records**, appends a MAC to each record and then encrypts record+MAC. However, in a MITM attack, the order of packets could be reversed as TCP sequence numbers are not encrypted. SSL therefore uses sequence numbers. Bob keeps a sequence number counter which begins at zero and is incremented at each record transmission. He includesthe sequence number in the MAC calculation: MAC = hash(data+Mb+SeqNum). Alice tracks Bob's sequence numbers so that she can verify the MAC.
+
+#### SSL Record
+The real SSL record:
+
+![Alt text](sslrecord.png)
+
+ - Type: handshake message, data message, connection teardown message
+ - Length: used to extract the records out of the TCP byte stream
+
+### 8.6.2 A More Complete Picture
+SSL allows Alice and Bob to agree on the cryptographic algorithms at the beginning of the SSL session, during handshake. Steps:
+
+ 1. The client sends a list of cryptographic algorithms it supports, along with a client nonce
+ 2. The server chooses a symmetric algorithm (ex: AES), a public key algorithm (ex RSA) and a MAC algorithm. It sends back to the client its choices as well as a certificate and a server nonce.
+ 3. The client verifies the certificate, extracts the server's public key, generates a *Pre-Master Secret* (PMS), encrypts it with the server's public key and sends the encrypted PMS to server.
+ 4. Using the same key derivation function (specified by SSL standard), *client and server independently compute the Master Secret (MS) from the PMS and the nonces*. The MS is sliced up to create the two encryption and the two MAC keys. Furthemore when the symmetric cipher employs CBC (ex 3DES or AES) the two Initialization Vectors (IVs), one for each side of the connection, are also obtained from hte MS. Henceforth **all messages sent between client and server are encrypted and authenticated (using MAC)**
+ 5. The client sends a MAC of all the handshake messages
+ 6. The server sends a MAC of the handshake messages.
+
+5 and 6 protect the handshake from tampering: if in the end MAC are not coherent with the previously sent messages, the connection is stopped. (prevents an attacker from impersonating the server and imposing weak algorithms).
+Nonces are used to avoid *connection replay attacks* (resending packets sniffed during a previous connection again, using nonces allows to have different MACs and therefore messages at each connection, even if the content of the communication is the same).
+
+#### Connection Closure
+TCP FIN segments can be crafted by an attacker (*truncation attack*), therefore they cannot be used.
+The type field of SSL records is used for these purpose, even if it sent in the clear, it is authenticated at the receivers using record's MAC.
+
+
