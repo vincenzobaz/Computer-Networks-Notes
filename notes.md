@@ -1295,7 +1295,7 @@ Block ciphers typically use functions that simulate randomly permuted tables. EX
 64 bit input split into 8 8-bit chunks, each of which is processed by a 8-bit to 8-bit table, each chunk having its table. The encrypted chunks are reassembled into a 64 bits message which is fed again to the input. After *n* such cycles, the function provides a 64-bit block of ciphertext. The key for this block would be the eight permutation tables, assuming that the scramble function is publicly known. Popular block ciphers: DES (Data Encryption Standard), 3DES, AES (Advanced Encryption Standard). These use functions instead of predetermined tables. Each of them uses a string of bits for a key (64-bit blocks with 56-bit key in DES, 128-bits blocks and 128/192/256 bits-long keys)
 
 ##### Cipher-Block Chaining
-We need to avoid long messages avoiding that two or more identical ciphertexts (produced for identical cleartexts by a symmetric encryption). 
+We need to avoid long messages avoiding that two or more identical ciphertexts (produced for identical cleartexts by a symmetric encryption).
 (I DON'T FINISH THIS PART, IT GOES TOO DEEP INTO ENCRYPTION TECHNIQUES WHICH IS NOT WHAT WE ARE INTERESTED IN)
 
 ## 8.3 Message Integrity and Digital Signatures
@@ -1515,3 +1515,121 @@ An organization can deploy one more IDS sensors in its network. When many are us
 A signature based IDS maintains an extensive database of attack signature, each of which being a set of rules pertaining to an intrusion activity. A signature can be a list of packet characteristics or may relate to a series of packets. They are created by network security engineers researching attacks. The ids sniffs every packet passing by it, comparing it with signatures.
 Signature based IDS, although widely deployed, have a number of limitations: they require a previous knowledge of the attack to generate an accurate signature, false alarms may be generated, they can be slow and fail to detect attacks if overwhelmed.
 Anomaly-based packets study normal traffic and looks for statistically unusual events. They don't rely on previous knowledge of attacks.
+
+# Chapter 5: The Link Layer: Links, Access Networks and LANs
+
+## 5.1 Introduction to the Link Layer
+Some terminology:
+
+ - **node** = any device running a link-layer protocol (hosts, routers, switches...)
+ - **link** = communication channels connecting adjacent nodes along the path.
+ - Over a given link, a transmitting node encapsulates the datagram in a **link-layer frame** and transmits the frame into the link.
+
+### 5.1.1 The Services Provided by The Link Layer
+Possible services offered by a link-layer protocol include:
+
+ - *Framing*: all link layer protocols encapsulate each network layer datagram  within a link-layer frame before transmission. A frame consists of a data field, containing the datagram, and a number of header fields, whose structure is determined by the protocol.
+ - *Link access*: A **Medium Access Control** (MAC) protocol specifies the rules by which a frame is transmitted onto the link.
+ - *Reliable delivery*: the protocol guarantees to move each datagram across the link without loss or errors. A reliable delivery protocol is often used for links highly prone to errors (WiFi) so that the error can be corrected locally, where it happens, rather than forcing an end-to-end retransmission. However it can represent a significant overhead for low bit-error links (cable) and therefore many wired link-layer protocols do not provide a reliable delivery service.
+ - *Error detection and correction*: signal attenuation and electromagnetic noise can introduce errors. Because there is no need to forward a datagram that has an error, may link-layer protocols provide a mechanism to detect such bit errors so that they can drop the frames. This can be accomplished transmitting error-detection bits in the frame. Link layer error detection is usually more sophisticated and *implemented in hardware*.
+
+### 5.1.2 Where Is the Link Layer Implemented?
+In routers, the link layer is implemented in the line card. Is a host's link layer implemented in hardware or software?
+For the most part, the link layer is implemented in a **network adapter**, sometimes known as **network interface card (NIC)**. At the heart of the NIC is the link-layer controller, usually a single, special purpose chip that implements many of the link-layer services. Thus, much of a link-layer controller's functionality is implemented in hardware.
+Part of the link layer is implemented in software that runs on the host's CPU, this part implement higher-level functionalities.
+Link-Layer is a combination of hardware and software, the place in the protocol stack where software meets hardware.
+
+## 5.2 Error-Detection and -Correction Techniques
+Error detection and correction allow the receiver to sometimes, *but not always*, detect that bit errors have occurred. Even with the use of error-detection bits, there still may be **undetected bit errors** (the receiver is unaware of the presence of corrupted bits).
+We want to keep the probability of such an event small. Let's now consider three techniques for detecting errors in the transmitted data: parity checks, checksumming methods and cyclic redundancy checks
+
+### 5.2.1 Parity Checks
+Perhaps the simplest form of error detection is the use of a single **parity bit**. Suppose that the information to be sent, *D*, has *d* bits.
+In an even parity scheme, the sender simply includes one additional bit and chooses its value such that the total number of 1s in the *d+1* bits (original + parity bit) is even. (odd parity scheme, parity bit to one if #1s % 2 != 0).
+The receiver only needs to count the number of 1s in the *d+1* bits. If an odd number of 1 valued bits are found with an even parity scheme, the receiver knows that *some odd number* of bit error has occurred.
+If an even number of bit errors occur, this would result in an undetected error.
+Another approach is to use a ***two dimensional even parity***: the *d* bits are divided into *i* rows and *j* columns. A parity value is computed for each row and for each column. The result *i + j + 1* parity bits comprise the error-detection bits.
+A single bit error in the original *d* bits will cause the parity of both the column and the row containing the flipped bit to to be in error. The receiver can not only detect the error, but also use the column and row indices of the column and row with parity errors to actually identify the bit that was corrupted and *correct* the error.
+This technique also allows to detect an error in the *parity bits*.
+The ability of the receiver to both detect and correct errors is known as **forward error correction (FEC)**
+
+### 5.2.2 Checksumming Methods
+The *d* bits of data are treated as a sequence of *k*-bit integers for example the Internet checksum already studied: bytes of data are treated as integers and summed, the 1s complement of this sum forms the Internet checksum carried in the header. The receiver checks the checksum by taking the 1s complement of the sum of the received data (including checksum) and checking whether the result is all 1 bits, if there are any 0, an error is indicated. In TCP and UDP the checksum is computed over all fields (header and data).
+Checksumming methods require little packet overhead but they provide relatively weak protection against errors.
+Why is checksumming used in transport layer and cyclic redundancy check used at the link layer?
+Transport layer is implemented in software (OS) and therefore needs a simple and fast error detection scheme while error detection at link layer is implemented in hardware which can perform the more complex CRC operations.
+
+### 5.2.3 Cyclic Redundancy Check (CRC)
+**Cyclic Redundancy Check (CRC) codes** are also known as **polynomial codes** since it is possible to view the string to be sent as a polynomial whose coefficients are the 0 and 1 values in the bit string with operation interpreted as polynomial arithmetic.
+Sender and receiver must agree on a *r+1* bit pattern know as **generator** which we'll denote as *G*. We require the leftmost bit of G to be a 1. For a given piece of data *D* the sender will choose *r* additional bits, *R*, and append them to *D* such that the resulting *d + r* bit pattern, interpreted as a binary number, is exactly divisible by G using modulo-2 arithmetic.
+Checking is therefore easy: the receiver divides the *d + r* received by bits by *G*, if the remainder is nonzero, an error has occurred, otherwise the data is accepted as being correct.
+All CRC calculations are done in modulo 2 without carries in addition or borrows in subtraction (+ = - = xor).
+
+## 5.3 Multiple Access Links and Protocols
+There are two types of network links: point-to-point and broadcast links. A **point-to-point link** consists of a single sender at one end of the link and a single receiver at the other end of the link. A **broadcast link** can have multiple sending and receiving nodes all connected to the same, single, shared broadcast channel. The term *broadcast* is used because when any node transmits a frame, the channel broadcasts the frame and each other node receives a copy (ex: ethernet, wireless).
+
+The **multiple access problem**: How to coordinate the access of multiple sending and receiving nodes to a shared broadcast channel?
+Computer networks have **multiple access protocols** by which nodes regulate their transmission into the shared broadcast channel.
+More than two nodes can transmit frames at the same time, which will result in all of the nodes receiving multiple frames at the same time: the frames **collide** at all of the receivers. Typically in case of collision, *none of the receiving nodes can make any sense of any of the frames*, they become inextricably tangled together and are therefore **lost**, the channel being wasted during collision.
+Thus it is necessary to coordinate the transmission of the active nodes.
+We can classify multiple access protocols in three categories: **channel partitioning protocols, random access protocols, taking-turns protocols**.
+
+### 5.3.1 Channel Partitioning Protocols
+TDM and FDM (from circuit switching) are in this category.
+A third channel partitioning tool is **code division multiple access (CDMA)** which assigns a different *code* to each node. Each node then uses its unique code to encode the data bits it sends. If the codes are chosen carefully, then all nodes can transmit simultaneously and yet have their respective receivers correctly receive a sender's encoded data bits. Originally used in military systems, it's now widely used for civilian use, particularly in cellular telephony.
+
+### 5.3.2 Random Access Protocols
+A transmitting node always transmits at the full rate of the channel, *R* bps. When there is a collision, each node involved in the collision repeatedly retransmits its frame until the frame gets through without a collision.
+But when a node experiences a collision, *it waits a random dely before retransmitting the frame*. The delay is chosen independently.
+Here a few of the most commonly used random access protocols:
+
+#### Slotted ALOHA
+All frames consist of *L* bits, time is divided into slots of size *L/R* seconds, nodes start to transmit frames only at the beginning of slots. Moreover nodes are synchronized so that each node when the slot begins. If two or more frames collide in a slot, then all the nodes detect the collision event before the slot ends.
+
+If *p* is a probability then the operation of slotted ALOHA in each node is simple:
+
+ - each node waits the beginning of the next slot to transmit the entire frame in a slot
+ - If no collision occurs, the frame is considered delivered
+ - If collision, this is detect before the end of the slot. The node retransmits its frame *in each subsequent slot* with probability *p* (probability of retransmission) until the frame is transmitted  without a collision.
+
+Slotted ALOHA allows transmission at full rate *R*, is highly decentralized, and is extremely simple.
+The computed maximal efficiency (successfully used slots in transmission / total slots) of Slotted ALOHA) is 37% thus the effective transmission rate is 0.37*R* bps.
+
+#### Aloha
+all nodes synchronize their transmissions to start at the beginning of a slot. The node immediately transmits a frame in its entirety in the channel. In case of collision, the node will then immediately retransmit the frame with probability *p* otherwise the node waits for a frame transmission time, after which it transmits the frame with probability *p* or wait for another frame with probability *1-p*. The maximum efficiency is 1/(2e) but the protocol is fully decentralized.
+
+#### Carrier Sense Multiple Access (CSMA)
+CSMA and CSMA/CD (collision detection) embody two rules:
+
+ - **carrier sensing**: if a node is transmitting, the others wait until they detect no transmission for a short amount of time and begin transmission.
+ - **collision detection**: a transmitting node listens to the channel while it's transmitting, if it detects that another node is transmitting, it stops transmitting and waits for a random amount of time before repeating the sense-and-transmit-when-idle-cycle.
+
+![Alt text](csmaDIA.png)
+
+It is evident that the **propagation delay** of the channel plays a crucial role: the longer, the larger the chance that a carrier sensing node is not yet able to sense a transmission that has already begun.
+
+#### Carrier Sense Multiple Access with Collision Detection (CSMA/CD)
+When a node detects a collision, it ceases transmission immediately in Collision Detection.
+A link layer frame is prepared, if the node senses that the channel is idle (no energy is entering the adapter from the channel), it starts to transmit the frame, else it waits until it detects idle. While transmitting, the node monitors the channel for usage from other nodes, if the entire frame is transmitted without detecting usage, then the adapter is finished. If energy is detected from other adapters while transmitting, the node aborts transmission (stops), waits for  a random amount of time and then returns to checking for idle.
+
+![Alt text](csmacdDIA.png)
+
+The wait for random amount of time is required in order to avoid the nodes to keep colliding.
+
+#### CSMA/CD Efficiency
+Is the long run fraction of time during which frames are being transmitted without collision. If the propagation delay approaches 0, the efficiency approaches 1.
+Also if the propagation delay becomes very large, efficiency approaches 1.
+
+### 5.3.3 Taking-Turns Protocols
+There are a lot of them, we'll cover two of the more important, the first one being the **polling protocol**. It requires one of the nodes to be designated as a master node which **polls** each of the nodes in a round-robin fashion.
+The master tells node 1 that it can transmit up to some maximum number of frames, when node 1 is finished (the master checks for energy in the channel) the master tells the same to node 2 and so on.
+The polling protocol eliminates the collisions and empty slots that plague random access protocols, resulting in a much higher efficiency.
+However it introduces a *polling delay* (the amount of time required to notify a node that it can transmit) [if only one is transmitting, it will have to wait for the master to poll all the others]. Moreover the master node represents a single point of failure.
+
+The second protocol is the **token-passing protocol** in which there is no master method. A small, special purpose frame known as **token** is exchanged among the nodes in some fixed order. When a node receives a toke, it holds it only if it has some frames to transmit otherwise it immediately forwards it to the next node.If a node has frames to transmit when it receives the token, it sends up to a maximum number of frames and then passes the token. Token passing is decentralized and highly efficient but the failure of one node could crash the entire channel, or a node could neglect to release the token....
+
+### 5.3.4 DOCSIS: The Link-Layer Protocol for Cable Internet Access
+The Data-Over-Cable-Service-Interface-Specifications specifies the cable data network architecture and its protocols. DOCSIS uses FDM to divide the downstream and upstream network segments into multiple frequency channels. Each upstream and downstream channel is a broadcast channel. Several cable modems share the same upstream channel (frequency) to the CMTS and thus collision can potentially occur.
+Each upstream channel is divided into intervals of time (TDM-like) each containing a sequence of mini-slots during which cable modems can transmit to the CMTS, which explicitly grants permission to individual modems to transmit during specific mini-slots. This is done sending a special control message known as a MAP message on a downstream channel to specify which cable modem can transmit during which mini-slot.
+Modems send mini-slot-request frames to the CMTS during a special set of interval mini-slots dedicated for this purpose. The requests are transmitted in a random access manner and may collide with each other. The modem cannot detect activity nor collisions: it simply infers that its request experienced collision if it does not receive a response in the next downstream control message.
+When a collision is inferred, a modem uses binary exponential backoff to defer the transmission to a future slot.
