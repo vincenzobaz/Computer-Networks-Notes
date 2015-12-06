@@ -1697,3 +1697,95 @@ The Data-Over-Cable-Service-Interface-Specifications specifies the cable data ne
 Each upstream channel is divided into intervals of time (TDM-like) each containing a sequence of mini-slots during which cable modems can transmit to the CMTS, which explicitly grants permission to individual modems to transmit during specific mini-slots. This is done sending a special control message known as a MAP message on a downstream channel to specify which cable modem can transmit during which mini-slot.
 Modems send mini-slot-request frames to the CMTS during a special set of interval mini-slots dedicated for this purpose. The requests are transmitted in a random access manner and may collide with each other. The modem cannot detect activity nor collisions: it simply infers that its request experienced collision if it does not receive a response in the next downstream control message.
 When a collision is inferred, a modem uses binary exponential backoff to defer the transmission to a future slot.
+
+## 5.4 Switched Local Area Networks
+Switched local networks connect hosts using link-layer switches which **do not run networks-layer protocols**.
+
+### 5.4.1 Link-Layer Addressing and ARP
+
+#### MAC Addresses
+Network interfaces in hosts and routers have link-layer addresses, however *link-layer switches do not have link-layer addresses associated with their interfaces* so that they can carry datagrams without having routers or hosts having to explicitly address the frame to the intervening switch.
+A link-layer address is called **LAN address**, **physical address** or **MAC address**, the last name being the most popular. This address is **6 bytes long**, typically expressed in hexadecimal notation. They are supposed to be permanent but can be changed via software.
+**No two adapters have the same address**: the IEEE manages the MAC address space, usually assigning a 24 prefix to each manufacturer and letting him choose the content of the remaining 24 bits.
+MAC address have a flat structure (no hierarchy such as in IP) and do not change.
+When an adapter wants to send a frame to some destination adapter, it inserts the destination adapter's MAC address into the frame and then sends the frame into the LAN. An adapter might receive a frame that isn't addressed to it, when this happens, the adapter checks whether the frame's destination address matches its own, if not it discards the frame. When a sending adapter want to broadcast to the whole network, it inserts a special **MAC broadcast address** into the destination address field, for 6bytes addresses that is FF-FF-FF-FF-FF-FF
+
+#### Address Resolution Protocol (ARP)
+The **Address Resolution Protocol (ARP)** translates network-layer addresses into link-layer addresses, analogously to DNS, but ARP resolves IP addresses only for hosts and router interfaces on the same subnet.
+Each host and router has an **ARP table** which contain mappings of IP addresses to MAC addresses and a time-to-live TTL value which indicates when each mapping will be deleted from the table. A typical TTL is 20 minutes from when an entry is placed in the ARP table.
+The table does not necessarily contain an entry for every host and router on the subnet.
+What if a frame has to be sent to an address which does not appear in the table?
+The sender creates a special packet, an **ARP packet**, containing the sending and receiving IP and MAC addresses. Both ARP query and response have the same format: the sending forwards the ARP request to the broadcast address (destination address) the frame containing the query is received by all the other adapters in the subnet. Each adapter passes the frame to the ARP module which checks if its IP address matches the destination IP address in the query. The one with a match sends back the response with the desired mapping. The querying can update its table and send the IP datagram encapsulated in a link-layer frame.
+ARP is plug and play: the table gets build automatically.
+ARP stands in the boundary between the link and network layers.
+
+### Sending a Datagram off the Subnet
+A datagram that has to be sent out of the subnet is first sent to the first-hop router on the path to the final destination (which is outside the subnet). How is its MAC acquired? Using ARP.
+When the frame reaches the next-hop router of the destination subnet, it has to be moved inside, the router having to decide what interface to use. This is done using the forwarding table: the router extracts the datagram and checks the destination IP. The datagram is encapsulated again and sent into the subnet, this time the MAC address of the frame is indeed the destination MAC address of the ultimate destination, which the router acquire via ARP.
+
+### 5.4.2 Ethernet
+It has pretty much taken over the wired LAN market. Since its invention in the 70's, it has grown and become faster.
+At the beginning the original Ethernet LAN used a coaxial bus to interconnect the nodes, creating a broadcast LAN. By the late 90s, most companies and universities had replaces their LANs with Ethernet installation using a hub-based star topology: hosts and routers are directly connected to a hub with twisted-pair copper wire. A **hub** is a physical layer device that acts on individual bits rather than frames. When a hub receives a bit, it simply recreates it boosting its energy strength and transmits the bit onto all the other interfaces (it's still a broadcast LAN). In the early 2000s, the star topology evolved: the hub was replaced with a **switch**, allowing a collision-less LAN.
+
+#### Ethernet Frame Structure
+
+![Alt text](ethernetframe.png)
+
+ - *Data fields* (46 to 1,500 bytes): carries the IP datagram (or other network-layer datagram). The MTU (maximum transmission unit) is 1500 bytes, compensated with fragmentation. The minimum is 46, is less, the data is "stuffed" and the receiving network layer uses the length field to eliminate the stuffing
+ - *Destination address* (6 bytes) destination MAC address.
+ - *Source address* (6 bytes)
+ - *Type field* (2 bytes) allows to multiplex network layer protocols (if not only IP is used, also ARP has its own type number 0x0806)
+ - *Cyclic redundant check (CRC)* (4 bytes): used for bit error detection
+ - *Preamble* (8 bytes): the first seven have value 10101010, the last has value 10101011. The first seven serve as "wake up" the receiving side and to *synchronize their clocks to that of the sender's clock* the two 1s at the end of byte 8 alerts the receiver that the important stuff is about to come.
+
+All of the Ethernet technologies provide **connectionless service**  (no handshaking, similar to UDP) and **unrealiable service** to the network layer (no ACK, drop in case of errors) which help to make Ethernet simple and cheap.
+If there are gaps due to discarded Ethernet frames, the fact that the application sees the gaps or not depends on the transport layer protocol used: not with TCP (reliable data transfer), yes with UDP.
+
+#### Ethernet Technologies
+There are many variants and flavors of Ethernet which have been standardized over the years by the IEEE. They vary in speed: 10 Megabit, 100 Megabit, 1000 Megabit, 10 Gigabit...
+They can also vary in the type of traffic they can transport....
+
+### 5.4.3 Link-Layer Switches
+Switch receive and forward frames. They are **transparent**: adapters address each other, without knowing that the switch is sitting in the middle. As they're output rate might be smaller than the input rate, they also have buffers to queue frames.
+
+### Forwarding and Filtering
+**Filtering** is the switch function that determines whether a frame should be forwarded to some interface or should just be dropped.
+**Forwarding** is the switch function that the determines the interfaces to which a frame should be directed and then moves the frame to those interfaces.
+Switch filtering and forwarding are done with a **switch table** which contains entries for some (not necessarily all) of the hosts and routers on a LAN. Each entry contains:
+`(MAC address, interface leading toward that MAC, time at which the entry was placed in the table)`
+Switches forward frames based on the MAC addresses rather than on IP addresses.
+
+When a switch receives a frame:
+
+ - There is no entry in the table associated with the destination address -> the packet is broadcast through all the interfaces (except the one through which the frame was received)
+ - There is an entry in the table that point to the same interface through which the frame was received -> The frame is discarded (filtering)
+ - There is an entry in the table that point to an interface different from the one through which the frame was received -> the frame is put in the output buffer preceding the interface discovered thanks to the table (forwarding)
+
+#### Self-Learning
+The switch table is build ***automatically, dynamically and autonomously*** without any intervention from a network administrator: **switches are self learning**.
+
+ 1. The switch table is initially empty
+ 2. For each incoming frame, the switch stores in its table
+ 	1. the MAC address in the frame's *source address field*
+	2. the interface from which the frame arrived
+	3. the current time
+ 3. The switch deletes an address in the table if no frame are received with that address as the source after some period (**aging time**) so that to eliminate unused entries from the table
+
+Thus switches are **plug-and-play devices**: they require no human intervention. Switches are also full-duplex, meaning any interface can send and receive at the same time.
+
+#### Properties of Link-Layer Switching
+Advantages over buses or hubs:
+
+ - *Elimination of collisions*: the switch buffers frames and never transmit more than one frame on a segment at any one time. The maximum aggregated throughput is the sum of all the switch interface rates
+ - *Heterogeneous links*: The switch providing isolation, different links can operate at different speeds and run over different media. Therefore switches are ideal for mixing legacy equipment with new equipment.
+ - *Management*: A switch can disconnect a malfunctioning adapter and a cut cable isolates only one host. Switches can gather statistics useful for debugging and planning the evolution of the network.
+
+#### Switches Versus Routers
+They are both packet switches but switches are layer-2 packet switches while routers are layer-3 packet switches.
+Switches are plug-and-play, have relatively high filtering and forwarding rates.
+However to **prevent the cycling of broadcast frames, the active topology of a swtiched network is restricted to a spanning tree**. A large network requires large ARP tables in hosts and routers and would generate substantial ARP traffic and processing. Switches are also susceptible to broadcast storms: if one goes crazy and send an endless stream of broadcast frames, the others will forward all of the frames resulting in a network collapse.
+Routers network addressing is hierarchical, packets do not normally cycle and the topology is not limited to a spanning tree even when the network has redundant paths. Therefore packets can use the best path between source and destination. But routers are not plug-and-play (a host need the IP to connect) and often have a larger per-packet processing time than switches. Finally two pronunciation cause a lot of disputes.
+
+![Alt text](interconnectiondevices.png)
+
+### 5.4.4 Virtual Local Area Networks (VLANs)
