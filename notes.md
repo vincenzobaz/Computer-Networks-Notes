@@ -433,12 +433,11 @@ Content-Type: text/html
  - entity body: contains the requested object itself (data)
 
 Some common status codes:
-
- `200 OK`: request succeeded, information returned
- `301 Moved Permanently`: the object has moved, the new location is specified in the header of the response
- `400 Bad Request`: generic error code, request not understood
- `404 Not Found`: The requested document doesn't exist on the server
- `505 HTTP Version Not Supported`: The requested HTTP protocol version is not supported by the server
+ - `200 OK`: request succeeded, information returned
+ - `301 Moved Permanently`: the object has moved, the new location is specified in the header of the response
+ - `400 Bad Request`: generic error code, request not understood
+ - `404 Not Found`: The requested document doesn't exist on the server
+ - `505 HTTP Version Not Supported`: The requested HTTP protocol version is not supported by the server
 
 ### 2.2.4 User-Server Interaction: Cookies
 An HTTP server is *stateless* in order to simplify server design and improves performances. A website can identify users using **cookies**.
@@ -522,7 +521,7 @@ Having one single global DNS server would be simple, but it's not realistic beca
 #### A Distributed, Hierarchical Database
 The DNS uses a large number of servers, organized in a hierarchical fashion and distributed around the world.
 
-![Alt text][./dns-servers.png]
+![Alt text](./dns-servers.png)
 
 The three classes of DNS servers:
 
@@ -532,7 +531,7 @@ The three classes of DNS servers:
 
 Finally there are **local DNS servers** which is central to the DNS architecture. They are hosted by ISPs. When a hosts connects to one of these, the local DNS server provides the host with the IP addresses of one or more of its local DNS servers. Requests can ho up to the root DNS servers and back down.
 
-![Alt text][./distributedDNS.png]
+![Alt text](./distributedDNS.png)
 
 We can have both **recursive** and **iterative queries**.
 In **recursive queries** the user sends the request its nearest DNS which will ask to a higher-tier server, which will ask to lower order... the chain goes on until it reaches a DNS that can reply, the reply will follow the inverse path that the request had.
