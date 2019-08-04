@@ -729,7 +729,11 @@ DNS is an example of an application layer protocol that typically uses UDP: ther
 It is possible for an application developer to have reliable data transfer when using UDP. This can be done if reliability is built into the application itself (eg adding acknowledgement and retransmission mechanisms) but it is a nontrivial task and may keep the developer busy for a long time.
 
 ### 3.3.1 UDP Segment Structure
+
+
 ![Alt text](udp_segment.png)
+
+
 The UDP header has only four fields, each consisting of two bytes: source and destination port number, checksum and length (which specifies the number of bytes in the UDP segment, header + data). This last field is needed since the size of the data field may differ from one UDP segment to the next. The checksum is used for error detection.
 
 ### 3.3.2 UDP Checksum
@@ -750,7 +754,38 @@ We use the term packet rather than segment because the concepts explained here a
 We will only consider the case of **unidirectional data transfer** that is data transfer from the sending to the receiving side. The case of reliable **bidirectional** (full-duplex) **data transfer** is not more difficult but more tedious to explain. Nonetheless sending and receiving side will need to transmit packets in *both directions*.
 
 ### 3.4.1 Building a Reliable Data Transfer Protocol
-**Finite-state machine**s (FSM) are boring! And unlikely to be asked at the exam, therefore I decided not to cover them here.
+We will use Finite State Machines definitions for sender and reciever:
+
+#### `rdt1.0`: Simplest case
+ 
+ ![Alt text](rdt1.png)
+ 
++ The sending side (Fig. [a]), simply accepts data from the upper layer via the `rdt_send(data)` event.
++ Then the sender creates a packet for `data` using the `make_pkt(data)` action.
++ Then it sends the `packet` using the `udt_send(packet)` action.
++ Then our recieving side recieves a packet from the underlying layer via the `rdt_recv(packet)` event.
++ Then it removes the data from the packet via the `extract(packet,data)` action.
++ Then it passes data to the upper layer via the `deliver_data(data)` action.
+
+#### `rdt2.0`: Data Transfer with Bit Errors:
+
+> NOTE:<br>
+> Need to define **ARQ Protocols** (**A**utomatic **R**epeat re**Q**uest)
+> An ARQ needs 3 types of mechanisms fundamentally:
+> - **Error Detection**: A mechanism to let the reciever detect bit errors when they occur.
+> - **Reciever Feedback**: A mechanism to let sender know about the status of the delivered data at the recieving end. An *Acknowledgement bit* is used to give a positive acknowledgement (ACK) or a negative one (NAK).
+> - **Retransmission**: A packet that was not recieved correctly needs to be retransmitted.
+
+![Alt text](rdt2.png)
+
++ The sending side has 2 states. On the left, it is waiting for data to be passed to it from the layer above it. When the `rdt_send(data)` event occurs, the sender will create and send a packet using `sendpkt= make_pkt(data,checksum)` and `udt_send(sendpkt)`.
++ After sending the packet, the sending side will wait for an acknowledgement (ACK or NAK) packet from the reciever. If `ACK` is recieved (`rdt_recv(rcvpkt) && isACK(rcvpkt)`) then it will go back to the state on the left. If a `NAK` is recieved (`rdt_recv(rcvpkt) && isNAK(recvpkt)`) then it will retransmit the last packet and wait for the acknowledgement packet. **NOTE:** when the sender is waiting for an ACK, it cannot recieve any more data to send, hence `rdt2.0` is a **stop-and-wait** protocol.
++ The recieving side will recieve the packet and checks if there are any bit errors in it. It does this using `rdt_recv(rcvpkt) && corrupt(rcvpkt)` and `rdt_recv(recvpkt) && notcorrupt(recvpkt)`. If the packet has no errors then it will extract the data from the packet and then send a postive ACK to the sender and then send the data to the upper layer, else it will send a NAK to the sender to retransmit the last packet.
+
+#### `rdt3.0`: Data Transfer with Bit Errors and Packet loss:
+
+![Alt text](rdt3.png)
+
 
 ### 3.4.2 Pipelined Reliable Data Transfer Protocols
 In today's high-speed networks stop-and-wait protocols are simply not tolerable: we  cannot send one packet and wait for the ACK and then send the second one, it is inefficient as we can see computing the **utilization of the channel**:
