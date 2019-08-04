@@ -549,8 +549,8 @@ Each DNS reply messages carries one or more resource records.
 A resource record is a four-tuple that contains the fields: `(Name, Value, Type, TTL)`
 `TTL` is the time to live of the resource record (when a resource should be removed from a cache). The meaning of `Name` and `Value` depend on `Type`:
 
-| Type  	| Name               	| Value                                                                                                                                                               	|
-|-------	|--------------------	|---------------------------------------------------------------------------------------------------------------------------------------------------------------------	|
+| Type | Name | Value |
+|--- | --- | --- |
 | A     	| a hostname         	| IP address                                                                                                                                                          	|
 | NS    	| a domain (foo.com) 	| hostname of an  authoritative DNS server which knows how to obtain the IP addresses for hosts in the domain. Used to route queries further along in the query chain 	|
 | CNAME 	| a alias name       	| canonical hostname for the name in Name                                                                                                                             	|
@@ -649,15 +649,15 @@ On the sending side, the transport layer converts the application messages into 
 On the receiving side, the network layer extracts the transport-layer segment from the datagram and passes the segment up to the transport-layer which then processes the received segment, making the data in the segment available to the received application.
 
 ### 3.1.1 Relationship Between Transport and Network Layers
-Whereas a transport-layer protocol provides logical communication between *processes* running on different hosts, a network-layer protocol provides logical communication between *hosts*.
+A transport-layer protocol provides logical communication between __*processes*__ running on different hosts. Whereas a network-layer protocol provides logical communication between __*hosts*__.
 
 ### 3.1.2 Overview of the Transport Layer in the Internet
 A TCP/IP network (such as the Internet) makes two distinct transport-layer protocols available to the application layer:
 
- - **UDP** User Datagram Protocol, which provides an unreliable, connectionless service to the invoking application
- - **TCP** Transmission Control Protocol which provides a reliable, connection-oriented service to the invoking application.
+ - **UDP** [ **U**ser **D**atagram **P**rotocol], which provides an unreliable, connectionless service to the invoking application
+ - **TCP** [**T**ransmission **C**ontrol **P**rotocol] which provides a reliable, connection-oriented service to the invoking application.
 
-We need to spend a few words on the network-layer protocol: the Internet network-layer protocol is the IP (Internet Protocol). It provides a logical communication between hosts. The IP service model is a **best-effort delivery service**: it makes the best effort to deliver segments between hosts, *but it makes guarantees*:
+We need to spend a few words on the network-layer protocol: the Internet network-layer protocol is the IP (Internet Protocol). It provides a logical communication between hosts. The IP service model is a **best-effort delivery service**: it makes the best effort to deliver segments between hosts, *but it __doesnt__ provide guarantees*:
 
  - it doesn't guarantee segment **delivery**
  - it doesn't guarantee **orderly** delivery of segments
@@ -666,14 +666,14 @@ We need to spend a few words on the network-layer protocol: the Internet network
 Thus IP is said to be an **unreliable service**.
 Every host has **at least one network-layer address** a so-called IP address.
 
-UDP and TCP extend IP's delivery service between to end systems to a delivery service between two processes running on the end systems.
+UDP and TCP extend IP's delivery service between 2 end systems to a delivery service between two processes running on the end systems.
 Extend host-to-host delivery to process-to-process delivery is called **transport-layer multiplexing and demultiplexing**.
-UDP provides process-to-process delivery and error checking are the only services provided by UDP (therefore it is an unreliable service).
-TCP provides **reliable data transfer** using flow control, sequence numbers, acknowledgements and timers. **TCP thus converts IP's unreliable service between end systems into a reliable data transport service between processes**
-TCP also provides **congestion control** a service not really provided to the invoking application as it is to the Internet as a whole: it prevents any TCP connection from swamping the links and routers between communication hosts with an excessive amount of traffic giving each connection traversing a congested link an equal share of the bandwidth.
+UDP provides process-to-process delivery and error checking services. Therefore it is an __unreliable service__.
+TCP provides **reliable data transfer** using flow control, sequence numbers, acknowledgements and timers. **TCP thus converts IP's unreliable service between end systems into a reliable data transport service between processes**.
+TCP also provides **congestion control**, a service not really provided to the invoking application as it is to the Internet as a whole: **it prevents any TCP connection from swamping the links and routers between communication hosts with an excessive amount of traffic giving each connection traversing a congested link an equal share of the bandwidth.**
 
 ## 3.2 Multiplexing and Demultiplexing
-Here we'll cover m&d in the context of the Internet but **a multiplexing/demultiplexing service is needed for all computer networks**.
+Here we'll cover multiplexing & demultiplexing in the context of the Internet but **a multiplexing/demultiplexing service is needed for all computer networks**.
 
  - The job of delivering the data in a transport-layer segment to the correct socket is called **demultiplexing**.
  - The job of gathering data chunks at the source host from different sockets, encapsulating each data chunk with header information (which will be used in demultiplexing) to create segments and passing the segments to the networks layer is called **multiplexing**.
@@ -685,7 +685,7 @@ Here we'll cover m&d in the context of the Internet but **a multiplexing/demulti
 A UDP socket is fully identified by the **two-tuple**:
 `(destination IP address , destination port number)`
 therefore if two UDP segments have different source IP address and/or source port numbers but have the same destination IP address and destination port number, than the two segments will be directed to the same destination process via the same destination socket.
-The source port number serves as part of the "return address"
+The source port number serves as part of the __`return address`__.
 
 #### Connection-oriented Multiplexing and Demultiplexing
 A TCP socket is identified by the **four-tuple**:
@@ -695,9 +695,9 @@ Two arriving TCP segments with different source IP addresses or source port numb
 
 Routine:
 
- - The TCP server application always has a **welcoming socket** that waits for connection establishment requests from TCP clients on port number X
+ - The TCP server application always has a **welcoming socket** that waits for connection establishment requests from TCP clients on port number `X`
  - The TCP client creates a socket and sends a connection **establishment request** (a TCP segment including destination port, source port number and *a special connection-establishment bit set in the TCP header*)
- - The server OS receives the incoming connection-request segment on port X, it locates the server process that is waiting to accept a connection on port number X, then creates **a new socket** which will be identified by
+ - The server OS receives the incoming connection-request segment on port `X`, it locates the server process that is waiting to accept a connection on port number `X`, then creates **a new socket** which will be identified by
  `(source port number in the segment (cleint), IP address of source host (client), the destination port number in the segment (its own), its own IP address)`
  - With the TCP connection in place, client and server can now send data to each other
 
@@ -730,8 +730,16 @@ DNS is an example of an application layer protocol that typically uses UDP: ther
 It is possible for an application developer to have reliable data transfer when using UDP. This can be done if reliability is built into the application itself (eg adding acknowledgement and retransmission mechanisms) but it is a nontrivial task and may keep the developer busy for a long time.
 
 ### 3.3.1 UDP Segment Structure
+
 ![Alt text](udp_segment.png)
-The UDP header has only four fields, each consisting of two bytes: source and destination port number, checksum and length (which specifies the number of bytes in the UDP segment, header + data). This last field is needed since the size of the data field may differ from one UDP segment to the next. The checksum is used for error detection.
+
+The UDP header has only four fields, each consisting of two bytes: 
+ - `source port number`
+ - `destination port number`
+ - `checksum` (used for error detection.)
+ - `length` (which specifies the number of bytes in the UDP segment, header + data)
+ 
+This `length` field is needed since the size of the data field may differ from one UDP segment to the next.
 
 ### 3.3.2 UDP Checksum
 Provides for error detection, to determine whether the bits in the segment have been altered as it moves from source to destination.
