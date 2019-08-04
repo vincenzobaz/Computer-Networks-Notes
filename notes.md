@@ -602,37 +602,38 @@ $$ D_{P2P} = \max \left\{ \frac{F}{u_s} , \frac{F}{d_{min}} , \frac{NF}{u_s + \s
 
 #### BitTorrent
 In BitTorrent the collection of all peers participating in the distribution of a particular file is called a *torrent*. Peers in a torrent download equal-size *chunks* of the file from one another with a typical chunk size of 256 KBytes.
-At the beginning a peer has no chunks, it accumulates more and more chunks over time. While it downloads chunks it also uploads chunks to other peers. Once a peer has acquired the entire file it may leave the torrent or remain in it and continue to upload chunks to other peers (becoming a *seeder*). Any peer can leave the torrent at any and later rejoin it.
+At the beginning a peer has no chunks, it accumulates more and more chunks over time. While it downloads chunks it also uploads chunks to other peers. Once a peer has acquired the entire file it may leave the torrent or remain in it and continue to upload chunks to other peers (becoming a *seeder*). Any peer can leave the torrent at any time and later rejoin it at anytime as well.
 
-Each torrent has infrastructure node called a *tracker*: when a peer joins a torrent, it registers itself with the tracker and periodically inform it that it is still in the torrent. The tracker keeps track of the peers participating in the torrent. A torrent can have up to thousands of peers participating at any instant of time.
+Each torrent has an infrastructure node called a *tracker*: when a peer joins a torrent, it registers itself with the tracker and periodically informs it that it is still in the torrent. The tracker keeps track of the peers participating in the torrent. A torrent can have up to thousands of peers participating at any instant of time.
 
 User joins the torrent, the tracker randomly selects a subset of peers from the set of participating peers. User establishes concurrent TCP connections with all of these peers, called *neighboring peers*. The neighboring peers can change over time.
 The user will ask each of his neighboring peers for the list of chunks they have (one list per neighbor).
 The user starts downloading the chunks that have the fewest repeated copies among the neighbors (**rares first** technique). In this manner the rarest chunks get more quickly redistributed, roughly equalizing the numbers of copies of each chunk in the torrent.
 
 
-Every 10 seconds the user measures the rate at which she receives bits and determines the four peers that are sending to her at the highest rate. It then reciprocates by sending chunks to these same four peers. The four peers are called **unchocked**. Every 30 seconds it also choses one additional neighbor at sends it chunks. These peers are called **optmistically unchocked**.
+Every 10 seconds the user measures the rate at which she receives bits and determines the four peers that are sending to her at the highest rate. It then reciprocates by sending chunks to these same four peers. The four peers are called **unchocked**. Every 30 seconds it also choses one additional neighbor and sends it chunks. These peers are called **optmistically unchocked**.
 
 ### 2.6.2 Distributed Hash Tables (DHTs)
 How to implement a simple database in a P2P network?
 In the P2P system each peer will only hold a small subset of the totality of the (key, value) pairs. Any peer can query the distributed database with a particular key, the database will locate the peers that have the corresponding pair and return the pair to querying peer. Any peer can also insert a new pair in the databse. Such a distributed database is referred to as a **distributed hash table (DHT)**.
-In a P2P file sharing application a DHT can be used to store the chunks associated to the IP of the peer in possess of them.
+In a P2P file sharing application a DHT can be used to store the chunks associated to the IP of the peer in possession of them.
 
-An approach: let's assign an identifier to each peer, where the identifier is an integer in the range $[0, 2^n -1]$ for some fixed $n$. Such identifier can be expressed by an $n$-bit representation. A hash function is used to transform non-integer values into integer values. We suppose that this function is available to all peers.
-How to assign keys to peers? We assign each (key,value) pair to the peer *whose identifier is the closest to key*, which is the identifier defined as *the closest successor of the key*.
+###### An approach:
+Let's assign an identifier to each peer, where the identifier is an integer in the range __`[0, 2^n -1]`__ for some fixed __`n`__. Such an identifier can be expressed by a __`n-bit`__ representation. A hash function is used to transform non-integer values into integer values. We suppose that this function is available to all peers.
+__How to assign keys to peers?__ We assign each `(key,value)` pair to the peer ***whose identifier is the closest to key***, which is the identifier defined as ***the closest successor of the key***.
 To avoid having each peer keeping track of all other peers (scalability issue) we use
 
 #### Circular DHT
-If we organize peers into a circle, each peer only keeps track of its immediate successor and predecessor (modulo $2^n$). This circular arrangement of peers is a special case of an **overlay network**: the peers form an abstract logical network which resides above the "underlay" computer network, the overlay links are not physical but virtual liaisons between pairs of peers. A single overlay link typically uses many physical links and physical routers in the underlying network.
+If we organize peers into a circle, each peer only keeps track of its immediate successor and predecessor __(modulo `2^n`)__. This circular arrangement of peers is a special case of an **overlay network**: the peers form an abstract logical network which resides above the "underlay" computer network, the overlay links are not physical but virtual liaisons between pairs of peers. A single overlay link typically uses many physical links and physical routers in the underlying network.
 
-In the circle a peer asks "who is responsible for key *k*?" and it sends the message clockwise around the circle. Whenever a peer receives such message, it knows the identifier of its predecessor and predecessor, it can determine whether it is responsible (closest to) for the key in question. If not, it passes the message to its successor. When the message reaches the peer responsible for the key, this can send a message back to the querying peer indicating that it is responsible for that key.
-Using this system *N/2* messages are sent on average (N = number of peers). Designing a DHT there is a tradeoff between the number of neighbors for each peer and the number of DHT messages needed to resolve a single query. (1 message if each peer keeps track of all other peers, *N/2* messages if each knows only 2 neighbors).
-To improve our circular DHT we could add shortcuts so that each peer not only keeps track of its immediate successor and predecessor but also of relatively small number of shortcut peers scattered about the circle.
-How many shortcut neighbors? Studies show that DHT can be designed so that bot the number of neighbors per peer as well as the number of messages per query is O(log *N*) (*N* the number of peers).
+In the circle a peer asks "who is responsible for key *k*?" and it sends the message clockwise around the circle. Whenever a peer receives such message, it knows the identifier of its predecessor and predecessor, it can determine whether it is responsible (closest to) for the key in question. If not, it passes the message to its successor. When the message reaches the peer responsible for the key, it can send a message back to the querying peer indicating that it is responsible for that key.
+Using this system __`N/2*`__ messages are sent on average __(N = number of peers)__. In designing a DHT there is always a tradeoff between the number of neighbors for each peer and the number of DHT messages needed to resolve a single query. (1 message if each peer keeps track of all other peers; **`N/2`** messages if each knows only 2 neighbors).
+To improve our circular DHT we could add shortcuts so that each peer not only keeps track of its immediate successor and predecessor but also of relatively small number of shortcut peers scattered around the circle.
+__How many shortcut neighbors?__ Studies show that DHT can be designed so that the number of neighbors per peer as well as the number of messages per query is __`O(log *N*)` (`N` the number of peers)__.
 
 #### Peer Churn
 In a P2P system, a peer can come or go without warning. To keep the DHT overlay in place in presence of a such peer churn we require each peer to keep track (know to IP address) of its predecessor and successor, and to periodically verify that its two successors are alive.
-If a peer abruptly leaves, its successor and predecessor need to update their information. The predecessor replaces its first successor with its second successor and ask this for the identifier and IP address of its immediate successor.
+If a peer abruptly leaves, its successor and predecessor need to update their information. The predecessor replaces its first successor with its second successor and ask it for the identifier and IP address of its immediate successor.
 
 What if a peer joins? If it only knows one peer, it will ask him what will be his predecessor and successor. The message will reach the predecessor which will send the new arrived its predecessor and successor information. The new arrived can join the DHT making its predecessor successor its own successor and by notifying its predecessor to change its successor information.
 
