@@ -597,7 +597,7 @@ D_cs >= max{[N*F/u_s], [F/d_min]}
 #### P2P
 When a peer receives some file data, it can use its own upload capacity to redistribute the data to other peers.
 
- - At the beginning of the distribution only the server has the file. It must send all the bits at least once. Distribution time is atleast `F/u_s`.
+ - At the beginning of the distribution only the server has the file. It must send all the bits at least once. Distribution time is __at least__ `F/u_s`.
  - The peer with the lowest download rate cannot obtain all **F** bits of the file in atleast `F/d_min` seconds.
  - The total upload capacity of the system is equal to the summation of the upload rates of the server and of all the peers. The system must upload **F** bits to **N** peers, thus delivering a total of **NF** bits which can't be done faster that **`u_total = u_s + u_1 + .... + u_N`.
 
