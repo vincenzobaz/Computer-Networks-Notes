@@ -65,7 +65,7 @@ The Internet is increasingly accessed wirelessly: wireless users transmit/receiv
 Smartphones and Tablets employ the same wireless infrastructure used for cellular telephony to send/receive packets through a base station operated by the cellular network provider. Third generation (3G) wireless and fourth generation (4G) of wide-area network are being deployed. LTE ("Long-Term Evolution") has its root in 3G and can potentially achieve rates in excess of 10 Mbps.
 
 ### 1.2.2 Physical Media
- le livre en parle en détail mais nous n'en avons pas parlé en cours
+The book talks about it in detail but we haven't talked about it in class
 
 A bit, when traveling from source to destination, passes through a series of transmitter-receiver pairs, for each pair, the bit is sent by propagating electromagnetic waves or optical pulses across a **physical medium**. This can take many shapes and forms and doesn't have to be of the same type for each transmitter-receiver pair along the path.
 Physical media fall into two categories:
