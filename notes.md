@@ -4,7 +4,7 @@
 
 ### 1.1.1 A nuts-and-bolts description
 
-The Internet is a computer networks that interconnects hundreds of millions of computing devices through the world. Today not only computers and workstation are being connected to the network, therefore the term *computer network* may sound a bit dated.
+The Internet is a computer networks that interconnects hundreds of millions of computing devices through the world. Today not only computers smartphone and workstation are being connected to the network, therefore the term *computer network* may sound a bit dated.
 
 All the devices connected to the Internet are called **hosts** or **end systems**. End systems are connected together by a network of **communication links** and **packets switches**.
 
