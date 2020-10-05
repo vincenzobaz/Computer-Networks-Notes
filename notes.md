@@ -732,6 +732,7 @@ It is possible for an application developer to have reliable data transfer when 
 
 ### 3.3.1 UDP Segment Structure
 
+
 ![Alt text](udp_segment.png)
 
 The UDP header has only four fields, each consisting of two bytes: 
@@ -760,16 +761,56 @@ We use the term packet rather than segment because the concepts explained here a
 We will only consider the case of **unidirectional data transfer** that is data transfer from the sending to the receiving side. The case of reliable **bidirectional** (full-duplex) **data transfer** is not more difficult but more tedious to explain. Nonetheless sending and receiving side will need to transmit packets in *both directions*.
 
 ### 3.4.1 Building a Reliable Data Transfer Protocol
-**Finite-state machine**s (FSM) are boring! And unlikely to be asked at the exam, therefore I decided not to cover them here.
+We will use Finite State Machines definitions for sender and reciever:
+
+#### `rdt1.0`: Simplest case
+ 
+ ![Alt text](rdt1.png)
+ 
++ The sending side (Fig. [a]), simply accepts data from the upper layer via the `rdt_send(data)` event.
++ Then the sender creates a packet for `data` using the `make_pkt(data)` action.
++ Then it sends the `packet` using the `udt_send(packet)` action.
++ Then our recieving side recieves a packet from the underlying layer via the `rdt_recv(packet)` event.
++ Then it removes the data from the packet via the `extract(packet,data)` action.
++ Then it passes data to the upper layer via the `deliver_data(data)` action.
+
+#### `rdt2.0`: Data Transfer with Bit Errors:
+
+> NOTE:<br>
+> Need to define **ARQ Protocols** (**A**utomatic **R**epeat re**Q**uest)
+> An ARQ needs 3 types of mechanisms fundamentally:
+> - **Error Detection**: A mechanism to let the reciever detect bit errors when they occur.
+> - **Reciever Feedback**: A mechanism to let sender know about the status of the delivered data at the recieving end. An *Acknowledgement bit* is used to give a positive acknowledgement (ACK) or a negative one (NAK).
+> - **Retransmission**: A packet that was not recieved correctly needs to be retransmitted.
+
+![Alt text](rdt2.png)
+
++ The sending side has 2 states. On the left, it is waiting for data to be passed to it from the layer above it. When the `rdt_send(data)` event occurs, the sender will create and send a packet using `sendpkt= make_pkt(data,checksum)` and `udt_send(sendpkt)`.
++ After sending the packet, the sending side will wait for an acknowledgement (ACK or NAK) packet from the reciever. If `ACK` is recieved (`rdt_recv(rcvpkt) && isACK(rcvpkt)`) then it will go back to the state on the left. If a `NAK` is recieved (`rdt_recv(rcvpkt) && isNAK(recvpkt)`) then it will retransmit the last packet and wait for the acknowledgement packet. **NOTE:** when the sender is waiting for an ACK, it cannot recieve any more data to send, hence `rdt2.0` is a **stop-and-wait** protocol.
++ The recieving side will recieve the packet and checks if there are any bit errors in it. It does this using `rdt_recv(rcvpkt) && corrupt(rcvpkt)` and `rdt_recv(recvpkt) && notcorrupt(recvpkt)`. If the packet has no errors then it will extract the data from the packet and then send a postive ACK to the sender and then send the data to the upper layer, else it will send a NAK to the sender to retransmit the last packet.
+
+#### `rdt3.0`: Data Transfer with Bit Errors and Packet loss:
+
+![Alt text](rdt3.png)
+
+- `rdt3.0` is called the **alternating-bit protocol**.
+
+![Alt text](rdt4.png)<br>
+![Alt text](rdt5.png)<br>
+![Alt text](rdt6.png)<br>
+![Alt text](rdt7.png)
 
 ### 3.4.2 Pipelined Reliable Data Transfer Protocols
-In today's high-speed networks stop-and-wait protocols are simply not tolerable: we  cannot send one packet and wait for the ACK and then send the second one, it is inefficient as we can see computing the **utilization of the channel**:
+In today's high-speed networks stop-and-wait protocols are simply not tolerable: we  cannot send one packet and wait for the ACK and then send the second one, it is inefficient as we can see computing the **utilization of the channel** (fraction of time the sender is actually busy sending bits into the channel):
 
-$$ U = \frac{L/R}{RTT+ L/R} $$
-
+```
+ U_sender = (L/R)/(RTT+ (L/R))
+```
 The solution is simple: rather than operate in a stop-and-wait manner, the sender is allowed to send multiple packets without waiting for acknowledgements. Since the many in-transit send-to-receiver packets can be visualized as filling a pipeline, this technique is known as **pipelining**.
 
-Some consequences:
+![Alt text](pipes.png)
+
+Some drawbacks:
 
  - The range of sequence numbers must be increased: **each in-transit packet must have a unique sequence number**
  - Sender and receiver may have to buffer more than one packet.
@@ -777,18 +818,24 @@ Some consequences:
 Two basic approaches toward pipelined error recovery can be identified: **Go-Back-N** and **Selective Repeat**
 
 ### 3.4.3 Go-Back-N (GBN)
-The sender is allowed to send N packets (**sender window size = N**), the receiver has a window of size **1**.
+The sender is allowed to send `N` packets (**sender window size = `N`**), the receiver has a window of size **`1`**.
 If a segment from sender to receiver is lost, the receiver discards all the segments with sequence number greater than the sequence number of the dropped packet, answering with ACK with this sequence number. (no packet re-ordering)
 The sender will wait for ACK in order to move the window and send new packets. The wait is not infinite, after a certain time a timeout will occur and the sender will retransmit all the packets in the sending window.
 In a Go-Back-N protocol, acknowledgements are **cumulative**: if sender receives ACK3 he will know that all the packets from 0 to 3 have been received, even if hasn't received ACK2.
 
+![Alt text](gbn.png)
+
+
 ### 3.4.4 Selective Repeat
 When the window-size and bandwidth-delay product are both large, many packets can be in the pipeline and a single packet error can thus cause GBN to retransmit a large number of packets, many unnecessarily.
-**Selective Repeat** avoid unnecessary retransmissions by having the sender retransmit only those that packets it suspects were received in error at the receiver:
+**Selective Repeat** avoid unnecessary retransmissions by having the sender retransmit only those packets that it suspects were received in error at the receiver:
 **individual acknowledgements** (opposed to cumulative).
 **sender window size = N** and **receiver window site = N**.
 The sender has a timer for each packet in its window. When a timeout occurs, only the missing packet is resent.
 The receiver buffers out of order packets.
+
+![Alt text](sr.png)
+
 
 ## 3.5 Conncetion-Oriented Transport: TCP
 ### 3.5.1 The TCP Connection
@@ -799,7 +846,7 @@ TCP is also **point-to-point**: a connection is always  between a *single sender
 
 Establishment of the connection: the client first sends a special TCP segment, the server responds with a second special TCP segment and the client answer again with a third special TCP segment. The first two cannot contain a payload while the third can. Three segments: **three-way handshake**.
 Both the sender and the receiver have buffers that are set up during the handshake.
-The maximum amount if data that can be grabbed and placed in a segment is limited by the **maximum segment size (MSS)**.
+The maximum amount of data that can be grabbed and placed in a segment is limited by the **maximum segment size (MSS)**.
 TCP therefore splits data into smaller chunks and pairs each chunk of client data with a TCP header thereby forming **TCP segments** which are passed down to the network layer. When TCP receives a segment at the other end, the segment's data is placed in the TCP connection's receive buffer. **Each side of the connection has its own send buffer and its own receive buffer**
 
 ### 3.5.2 TCP Segment Structure
@@ -811,10 +858,10 @@ TCP therefore splits data into smaller chunks and pairs each chunk of client dat
  - 4 bit **header length field**. The TCP header can be of a variable length due to the TCP options field (usually empty therefore usual length is 20 bytes)
  - **options field** used to negotiate MSS or as a window scaling factor for use in high speed networks.
  - **flag field**: 6 bits:
- 	1. ACK used to indicate that the value carried in the acknowledgement field is valid, that is the segment contains an acknowledgement for a segment that has been successfully received.
-	2. ,  3. and 4. **RST, SYN, FIN** for connection setup and teardown
-	5. **PSH** indicates that the receiver should pass the data to upper layer immediately
-	6. URG indicates that there is data in the segment that the sending side upper layer has marked as urgent.
+ 	1. **ACK** used to indicate that the value carried in the acknowledgement field is valid, that is the segment contains an acknowledgement for a segment that has been successfully received.
+	2. **RST, SYN, FIN** for connection setup and teardown.
+	5. **PSH** indicates that the receiver should pass the data to upper layer immediately.
+	6. **URG** indicates that there is data in the segment that the sending side upper layer has marked as urgent.
 
 #### Sequence Numbers and Acknowledgment Numbers
 TCP views data as *an unstructured, but ordered, stream of bytes* and TCP's use of sequence numbers reflects this view: sequence numbers are over the stream of bytes and not over the series of transmitted segments.
@@ -825,6 +872,9 @@ EX 500,000 bytes, MSS = 1,000 bytes => 500 segments are created. First is number
 TCP is said to provide **cumulative acknowledgements**: if sender receives ACK 536 he will know that all the bytes from 0 to 535 have been well received.
 What does a host do when it receives out-of-order segments? The receiver buffers the out-of-order bytes and waits for the missing bytes to fill in the gaps.
 Usually both sides of a TCP connection randomly choose an initial sequence number **randomly** both for security and for minimizing the possibility that a segment that is still present in the network from an earlier, already terminated connection between two hosts is mistaken for a valid segment in a later connection between these same two hosts.
+
+![Alt text](tcpeg.png)
+
 
 ### 3.5.3 Round-Trip Time Estimation and Timeout
 
@@ -837,9 +887,9 @@ Most TCP implementations take one `SampleRTT` at a time: at any point in time, t
 TCP **never computes a `SampleRTT` for a segment that has been retransmitted**, only for segments transmitted once.
 In order to estimate a typical RTT, TCP keeps an average called `EstimatedRTT` of the `SampleRTT` values. Upon obtaining a new `SampleRTT` TCP updates this estimation according to the formula:
 
-`EstimatedRTT = (1 - a) * EstimatedRTT + a * SampleRTT`
-
- where usually a = 1/8 = 0.125
+```
+EstimatedRTT = (1 - a) * EstimatedRTT + a * SampleRTT [where usually a = 1/8 = 0.125]
+```
 
 We note that this weighted average puts more weight on recent samples than on old samples. In statistics such an average is called an **exponential weighted moving average (EWMA)**.
 It is also useful to having an estimate of the *variability of the RTT*. We can measure how much `SampleRTT` typically deviates from `EstimatedRTT`:
