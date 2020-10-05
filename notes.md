@@ -581,24 +581,31 @@ To date, there hasn't been an attack that that has successfully impeded the DNS 
 In P2P file distribution, each peer can redistribute any portion of the file it has received to any peers, thereby assisting the server in the distribution process. As of 2012 the most popular P2P file distribution protocol is BitTorrent, developed by Bram Cohen.
 
 #### Scalability of P2P architectures
-Denote the upload rate of the server's access link by $u_s$, the upload rate of the *i*th peer's access link by $u_i$ and the download rate of the *i*th access link by $d_i$, tthe size of the to be distributed in bits ()
-Comparison client-server and P2P.
+Denote the upload rate of the server's access link by **u_s**, the upload rate of the **i-th** peer's access link by **u_i** and the download rate of the **i-th** access link by **d_i** and **F** is the size of the file to be distributed in bits.
+
+### Comparison client-server and P2P.
 
 #### Client-Server
-The server must transmit one copy of the file to *N* peers, thus it transmits *NF *bits. The time to distribute the file is at least **NF/u_s**.
-Denote $d_min = min\{ d_i \}$ the link with the slowest download rate cannot obtain all *F* bits in less than $F/d_min$ seconds
+- The server must transmit one copy of the file to **N** peers, thus it transmits **NF** bits. The time to distribute the file is at least `N*F/u_s`.
+- Let **d_min**= `min{d_i}` denote the link with the slowest download rate. It cannot obtain all `F` bits in less than `F/d_min` seconds.
+
+
 Therefore:
-$$ D_{cs} \geq \max \left\{ \frac{NF}{u_s} , \frac{F}{d_min} \right\} $$
+```
+D_cs >= max{[N*F/u_s], [F/d_min]}
+```
 
 #### P2P
 When a peer receives some file data, it can use its own upload capacity to redistribute the data to other peers.
 
- - At the beginning of the distribution only the server has the file. It must send all the bits at least once. $D \geq F/u_s$
- - The peer with the lowest download rate cannot obtain all *F* bits of the file in less than $F/d_min $ seconds.
- - The total upload capacity of the system is equal to the summation of the upload rates of the server and of all the peers. The system must upload *F* bits to *N* peers, thus delivering a total of *NF* bits which can't be done faster that $u_total$.
+ - At the beginning of the distribution only the server has the file. It must send all the bits at least once. Distribution time is __at least__ `F/u_s`.
+ - The peer with the lowest download rate cannot obtain all **F** bits of the file in atleast `F/d_min` seconds.
+ - The total upload capacity of the system is equal to the summation of the upload rates of the server and of all the peers. The system must upload **F** bits to **N** peers, thus delivering a total of **NF** bits which can't be done faster that **`u_total = u_s + u_1 + .... + u_N`.
 
-We obtain:
-$$ D_{P2P} = \max \left\{ \frac{F}{u_s} , \frac{F}{d_{min}} , \frac{NF}{u_s + \sum_{i=1}^N u_j} \right\} $$
+Therefore:
+```
+D_p2p >= max{[F/u_s] , [F/d_min] , [N*F/u_total]
+```
 
 #### BitTorrent
 In BitTorrent the collection of all peers participating in the distribution of a particular file is called a *torrent*. Peers in a torrent download equal-size *chunks* of the file from one another with a typical chunk size of 256 KBytes.
