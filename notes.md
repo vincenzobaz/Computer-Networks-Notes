@@ -1062,7 +1062,7 @@ During network-layer setup *all the routers along the path between source and de
 The messages used by end ssystems to initiate or terminate a VC are called **signaling messages** and the protocols used to exchange them are called **signaling protocols**.
 
 ### 4.2.2 Datagram Networks
-Each time an end system wants to send a packet, it sampts the packet with the address of the destination end system and pops the packet into the network. The routers along the path will use this address to forward it.
+Each time an end system wants to send a packet, it stamps the packet with the address of the destination end system and pops the packet into the network. The routers along the path will use this address to forward it.
 The router has a forward table that *maps destination addresses to link interfaces*. When a packet arrives, it reads the destination address, uses the table to determine what link to use, and forwards the packet to that output link interface.
 
 If we consider IPv4, addresses are 32 bits long. To avoid having tables with 2^32 entries, routers use **prefixes**. When there are multiple mathces to one address, the router uses the **longest prefix matching rule**.
